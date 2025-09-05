@@ -27,7 +27,7 @@ AFRAME.registerComponent('click-animate', {
       el.setAttribute('animation__rotatefast', {
         property: 'rotation',
         from: el.getAttribute('rotation').x + ' ' + el.getAttribute('rotation').y + ' ' + el.getAttribute('rotation').z,
-        to: '+=720 0 0',
+        to: '720 0 0',
         dur: 1000,
         loop: true
       });

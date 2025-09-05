@@ -1,30 +1,33 @@
-AFRAME.registerComponent('click-color-scale-rotate', {
-        init: function () {
-          const COLORS = ['#EF2D5E', '#4CC3D9', '#FFC65D', '#7BC8A4', '#F0F000'];
-          this.el.addEventListener('click', (evt) => {
-            console.log('Boîte cliquée !');
-            // Changer la couleur aléatoirement
-            const newColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-            this.el.setAttribute('material', 'color', newColor);
+AFRAME.registerComponent('click-animate', {
+  init: function () {
+    const el = this.el;
+    el.addEventListener('click', () => {
+      // Changer la couleur
+      const colors = ['#EF2D5E', '#4CC3D9', '#FFC65D', '#7BC8A4', '#F0F000'];
+      el.setAttribute('material', 'color', colors[Math.floor(Math.random() * colors.length)]);
 
-            // Animation de scale
-            this.el.setAttribute('animation__scale', {
-              property: 'scale',
-              to: '2 2 2',
-              dur: 500,
-              dir: 'alternate',
-              loop: 1
-            });
+      // Supprimer les animations existantes pour relancer proprement
+      el.removeAttribute('animation__scale');
+      el.removeAttribute('animation__rotatefast');
 
-            // Animation de rotation rapide
-            this.el.setAttribute('animation__rotatefast', {
-              property: 'rotation',
-              to: '0 720 0',
-              dur: 1000,
-              loop: 1
-            });
-
-            console.log('Boîte cliquée !', evt.detail.intersection.point);
-          });
-        }
+      // Animation scale
+      el.setAttribute('animation__scale', {
+        property: 'scale',
+        from: el.getAttribute('scale').x + ' ' + el.getAttribute('scale').y + ' ' + el.getAttribute('scale').z,
+        to: '2 2 2',
+        dur: 500,
+        dir: 'alternate',
+        loop: 1
       });
+
+      // Animation rotation
+      el.setAttribute('animation__rotatefast', {
+        property: 'rotation',
+        from: el.getAttribute('rotation').x + ' ' + el.getAttribute('rotation').y + ' ' + el.getAttribute('rotation').z,
+        to: '0 720 0',
+        dur: 1000,
+        loop: 1
+      });
+    });
+  }
+});

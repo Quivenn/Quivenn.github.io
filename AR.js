@@ -2,6 +2,7 @@ AFRAME.registerComponent('click-color-scale-rotate', {
         init: function () {
           const COLORS = ['#EF2D5E', '#4CC3D9', '#FFC65D', '#7BC8A4', '#F0F000'];
           this.el.addEventListener('click', (evt) => {
+            console.log('Boîte cliquée !');
             // Changer la couleur aléatoirement
             const newColor = COLORS[Math.floor(Math.random() * COLORS.length)];
             this.el.setAttribute('material', 'color', newColor);

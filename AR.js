@@ -20,7 +20,7 @@ AFRAME.registerComponent('click-animate', {
         to: '2 2 2',
         dur: 500,
         dir: 'alternate',
-        loop: true
+        loop: 1
       });
 
       // Animation rotation
@@ -29,7 +29,7 @@ AFRAME.registerComponent('click-animate', {
         from: el.getAttribute('rotation').x + ' ' + el.getAttribute('rotation').y + ' ' + el.getAttribute('rotation').z,
         to: '720 0 0',
         dur: 1000,
-        loop: true
+        loop: 1
       });
     }
 

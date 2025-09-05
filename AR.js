@@ -1,12 +1,15 @@
 AFRAME.registerComponent('click-animate', {
   init: function () {
     const el = this.el;
-    el.addEventListener('click', () => {
-      // Changer la couleur
-      const colors = ['#EF2D5E', '#4CC3D9', '#FFC65D', '#7BC8A4', '#F0F000'];
-      el.setAttribute('material', 'color', colors[Math.floor(Math.random() * colors.length)]);
+    const COLORS = ['#EF2D5E', '#4CC3D9', '#FFC65D', '#7BC8A4', '#F0F000'];
 
-      // Supprimer les animations existantes pour relancer proprement
+    // Fonction qui déclenche les animations
+    function animate() {
+      // Changer la couleur
+      const newColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+      el.setAttribute('material', 'color', newColor);
+
+      // Supprimer les anciennes animations
       el.removeAttribute('animation__scale');
       el.removeAttribute('animation__rotatefast');
 
@@ -28,6 +31,12 @@ AFRAME.registerComponent('click-animate', {
         dur: 1000,
         loop: 1
       });
-    });
+    }
+
+    // Clic via curseur AR.js
+    el.addEventListener('click', animate);
+
+    // Clic via souris sur PC
+    el.addEventListener('mousedown', animate);
   }
 });

@@ -7,6 +7,7 @@
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
     <!-- AR.js -->
     <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   </head>
   <body>
     <!--
@@ -36,6 +37,12 @@
                material="opacity: 0.6; color: #4CC3D9;" 
                animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
         </a-box>
+
+        <a-entity
+          position="0 0 0"
+          scale="0.05 0.05 0.05"
+          gltf-model="https://raw.githack.com/AR-js-org/AR.js/master/aframe/examples/image-tracking/nft/trex/scene.gltf"
+        ></a-entity>
       </a-marker>
 
       <!-- Caméra AR -->

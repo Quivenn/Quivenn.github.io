@@ -1,4 +1,6 @@
 const box = document.querySelector('#myBox');
+box.classList.add('clickable');
+
 
       box.addEventListener('click', function () {
         console.log("Boîte cliquée !");

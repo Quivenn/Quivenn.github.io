@@ -1,0 +1,36 @@
+#ui {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 15px;
+  border-radius: 10px;
+  display: none; /* Masqué par défaut */
+  text-align: center;
+  font-family: Arial, sans-serif;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+#colors {
+  margin-top: 10px;
+}
+
+#colors button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  margin: 5px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+#colors button:hover {
+  transform: scale(1.2);
+}
+
+#sizeSlider {
+  width: 200px;
+  margin-left: 10px;
+}

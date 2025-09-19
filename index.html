@@ -28,28 +28,27 @@
                 shadow="cast: true; receive: true"></a-sphere>
 
       <!-- Rig pour le joueur -->
-      <a-entity id="rig" position="0 0 0"
-                right-joystick-rotate
-                left-joystick-move>
+        <a-entity id="rig" position="0 0 0" joystick-locomotion>
         <!-- Caméra -->
         <a-entity id="head" camera position="0 1.6 0"></a-entity>
 
-        <!-- Contrôleur gauche avec super-hands -->
+        <!-- Contrôleur gauche -->
         <a-entity id="leftHand"
-                  hand-controls="hand: left"
-                  tracked-controls
-                  super-hands
-                  sphere-collider="objects: .interactive">
+                    hand-controls="hand: left"
+                    tracked-controls
+                    super-hands
+                    sphere-collider="objects: .interactive">
         </a-entity>
 
-        <!-- Contrôleur droit avec super-hands -->
+        <!-- Contrôleur droit -->
         <a-entity id="rightHand"
-                  hand-controls="hand: right"
-                  tracked-controls
-                  super-hands
-                  sphere-collider="objects: .interactive">
+                    hand-controls="hand: right"
+                    tracked-controls
+                    super-hands
+                    sphere-collider="objects: .interactive">
         </a-entity>
-      </a-entity>
+        </a-entity>
+
     </a-scene>
   </body>
 </html>

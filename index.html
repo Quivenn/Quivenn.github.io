@@ -9,12 +9,10 @@
   </head>
   <body>
     <a-scene shadow="type: pcfsoft">
-
-      <!-- Skybox -->
-      <a-sky src="panorama_image.png" rotation="0 -90 0"></a-sky>
-
+        <!-- Skybox -->
+        <a-sky src="panorama_image.png" rotation="0 -90 0"></a-sky>
       <!-- Lumières -->
-      <a-entity light="type: directional; intensity: 1; castShadow: true" 
+      <a-entity light="type: directional; intensity: 1; castShadow: true"
                 position="5 10 5"
                 shadow-camera-automatic="true"></a-entity>
       <a-entity light="type: ambient; intensity: 0.4; color: #ffffff"></a-entity>
@@ -22,37 +20,35 @@
       <!-- Sol -->
       <a-plane rotation="-90 0 0" width="50" height="50" color="#7BC8A4"
                shadow="receive: true"></a-plane>
-
       <!-- Cube -->
       <a-box position="0 0.5 -3" depth="1" height="1" width="1" color="tomato"
              shadow="cast: true; receive: true"></a-box>
-
       <!-- Sphère -->
       <a-sphere position="2 1 -4" radius="1" color="blue"
                 shadow="cast: true; receive: true"></a-sphere>
 
-      <!-- Rig avec caméra et manettes -->
+      <!-- Rig pour le joueur -->
       <a-entity id="rig" position="0 0 0"
-                movement-controls="constrainToNavMesh: false;"
-                universal-controls
-                right-joystick-rotation>
-        
+                right-joystick-rotate
+                left-joystick-move>
         <!-- Caméra -->
-        <a-entity id="head" camera position="0 1.6 0" look-controls="pointerLockEnabled: false"></a-entity>
+        <a-entity id="head" camera position="0 1.6 0"></a-entity>
 
-        <!-- Main gauche (joystick = déplacement) -->
+        <!-- Contrôleur gauche avec super-hands -->
         <a-entity id="leftHand"
-                  oculus-touch-controls="hand: left"
-                  vive-controls="hand: left"
-                  windows-motion-controls="hand: left"
-                  universal-controls></a-entity>
+                  hand-controls="hand: left"
+                  tracked-controls
+                  super-hands
+                  sphere-collider="objects: .interactive">
+        </a-entity>
 
-        <!-- Main droite (joystick = rotation) -->
+        <!-- Contrôleur droit avec super-hands -->
         <a-entity id="rightHand"
-                  oculus-touch-controls="hand: right"
-                  vive-controls="hand: right"
-                  windows-motion-controls="hand: right"
-                  universal-controls></a-entity>
+                  hand-controls="hand: right"
+                  tracked-controls
+                  super-hands
+                  sphere-collider="objects: .interactive">
+        </a-entity>
       </a-entity>
     </a-scene>
   </body>

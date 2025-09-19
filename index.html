@@ -5,18 +5,18 @@
     <title>A-Frame Scene avec Ombres et Rig</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style> body { margin:0 } </style>
+    <script src="script.js"></script>
   </head>
   <body>
     <a-scene shadow="type: pcfsoft">
 
-        <!-- Skybox -->
-        <a-sky src="panorama_image.png" rotation="0 -90 0"></a-sky>
+      <!-- Skybox -->
+      <a-sky src="panorama_image.png" rotation="0 -90 0"></a-sky>
 
       <!-- Lumières -->
       <a-entity light="type: directional; intensity: 1; castShadow: true" 
-                position="5 10 5" 
+                position="5 10 5"
                 shadow-camera-automatic="true"></a-entity>
-
       <a-entity light="type: ambient; intensity: 0.4; color: #ffffff"></a-entity>
 
       <!-- Sol -->
@@ -31,25 +31,29 @@
       <a-sphere position="2 1 -4" radius="1" color="blue"
                 shadow="cast: true; receive: true"></a-sphere>
 
-      <!-- Rig avec caméra + contrôleurs -->
-      <a-entity id="rig" movement-controls position="0 1.6 0">
-        <!-- Caméra du joueur -->
-        <a-entity camera look-controls wasd-controls="enabled: false"></a-entity>
+      <!-- Rig avec caméra et manettes -->
+      <a-entity id="rig" position="0 0 0"
+                movement-controls="constrainToNavMesh: false;"
+                universal-controls
+                right-joystick-rotation>
+        
+        <!-- Caméra -->
+        <a-entity id="head" camera position="0 1.6 0" look-controls="pointerLockEnabled: false"></a-entity>
 
-        <!-- Contrôleurs VR -->
-        <!-- nav-mesh: protecting us from running thru things  -->
-        <a-entity id="navmesh-Hello" gltf-model="assets/gltf/AdvHelloWorldnavmesh.gltf" visible="false" nav-mesh=""></a-entity>
-        <!-- Basic movement and teleportation  -->
-        <a-entity id="cameraRig" movement-controls="constrainToNavMesh: true;" navigator="cameraRig: #cameraRig; cameraHead: #head; collisionEntities: .collision; ignoreEntities: .clickable" position="0 0 0" rotation="0 0 0">
-        <!-- camera -->
-        <a-entity id="head" camera="active: true" position="0 1.6 0" look-controls="pointerLockEnabled: true; reverseMouseDrag: true" ></a-entity>
-              <!-- Left Controller -->
-              <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #15ACCF" teleport-controls="cameraRig: #cameraRig; teleportOrigin: #head; button: trigger; curveShootingSpeed: 18; landingMaxAngle: 60" visible="true"></a-entity>
-              <!-- Right Controller -->
-              <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #15ACCF" laser-controls raycaster="showLine: true; far: 10; interval: 0; objects: .clickable, a-link;" line="color: #7cfc00; opacity: 0.5" visible="true"></a-entity>
-      </a-entity>
-      </a-entity>
+        <!-- Main gauche (joystick = déplacement) -->
+        <a-entity id="leftHand"
+                  oculus-touch-controls="hand: left"
+                  vive-controls="hand: left"
+                  windows-motion-controls="hand: left"
+                  universal-controls></a-entity>
 
+        <!-- Main droite (joystick = rotation) -->
+        <a-entity id="rightHand"
+                  oculus-touch-controls="hand: right"
+                  vive-controls="hand: right"
+                  windows-motion-controls="hand: right"
+                  universal-controls></a-entity>
+      </a-entity>
     </a-scene>
   </body>
 </html>

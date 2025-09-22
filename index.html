@@ -2,11 +2,12 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>SceneVR – Three.js Version</title>
+  <title>SceneVR – Three.js avec WebXR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/stats.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/webxr/VRButton.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/webxr/XRControllerModelFactory.js"></script>
 
   <style>
     html, body {
@@ -51,6 +52,13 @@
       padding: 20px;
       border-radius: 8px;
     }
+    
+    #vrButton {
+      position: fixed;
+      right: 12px;
+      top: 12px;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
@@ -58,7 +66,8 @@
   <div id="blocker">
     <div id="instructions">
       Cliquez pour jouer<br/>
-      ZQSD pour se déplacer, souris pour regarder
+      ZQSD pour se déplacer, souris pour regarder<br/>
+      Ou utilisez le bouton VR pour la réalité virtuelle
     </div>
   </div>
 
@@ -72,6 +81,12 @@
     let prevTime = performance.now();
     let velocity = new THREE.Vector3();
     let direction = new THREE.Vector3();
+    
+    // Variables VR
+    let controller1, controller2;
+    let controllerGrip1, controllerGrip2;
+    let isVRSession = false;
+    let currentSession = null;
 
     // Constantes
     const moveSpeed = 5;
@@ -84,10 +99,10 @@
       scene.background = new THREE.Color(0x88ccff);
       scene.fog = new THREE.Fog(0x88ccff, 0, 50);
 
-      // Camera et rig
+      // Camera
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       
-      // Structure rig -> pitch -> head (camera)
+      // Structure pour le mode desktop
       rig = new THREE.Group();
       pitchObject = new THREE.Group();
       head = new THREE.Group();
@@ -107,16 +122,22 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.xr.enabled = true;
       document.body.appendChild(renderer.domElement);
 
-      // Contrôles souris
+      // Bouton VR
+      document.body.appendChild(VRButton.createButton(renderer));
+
+      // Contrôles souris (desktop seulement)
       controls = new THREE.PointerLockControls(camera, document.body);
       
       const blocker = document.getElementById('blocker');
       const instructions = document.getElementById('instructions');
       
       instructions.addEventListener('click', function() {
-        controls.lock();
+        if (!isVRSession) {
+          controls.lock();
+        }
       });
       
       controls.addEventListener('lock', function() {
@@ -125,8 +146,10 @@
       });
       
       controls.addEventListener('unlock', function() {
-        blocker.style.display = 'block';
-        instructions.style.display = '';
+        if (!isVRSession) {
+          blocker.style.display = 'block';
+          instructions.style.display = '';
+        }
       });
 
       // Éclairage
@@ -166,11 +189,13 @@
       sphere.receiveShadow = true;
       scene.add(sphere);
 
-      // Événements clavier
+      // Setup WebXR
+      setupXR();
+
+      // Événements
       document.addEventListener('keydown', onKeyDown, false);
       document.addEventListener('keyup', onKeyUp, false);
       
-      // Événements manettes
       window.addEventListener("gamepadconnected", (e) => {
         console.log("Manette connectée:", e.gamepad.id);
         gamepads[e.gamepad.index] = e.gamepad;
@@ -181,12 +206,66 @@
         delete gamepads[e.gamepad.index];
       });
 
-      // Redimensionnement
       window.addEventListener('resize', onWindowResize, false);
+    }
+
+    // Configuration WebXR
+    function setupXR() {
+      const controllerModelFactory = new THREE.XRControllerModelFactory();
+
+      // Contrôleur gauche
+      controller1 = renderer.xr.getController(0);
+      controller1.addEventListener('selectstart', onSelectStart);
+      controller1.addEventListener('selectend', onSelectEnd);
+      scene.add(controller1);
+
+      controllerGrip1 = renderer.xr.getControllerGrip(0);
+      controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
+      scene.add(controllerGrip1);
+
+      // Contrôleur droit
+      controller2 = renderer.xr.getController(1);
+      controller2.addEventListener('selectstart', onSelectStart);
+      controller2.addEventListener('selectend', onSelectEnd);
+      scene.add(controller2);
+
+      controllerGrip2 = renderer.xr.getControllerGrip(1);
+      controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
+      scene.add(controllerGrip2);
+
+      // Événements session VR
+      renderer.xr.addEventListener('sessionstart', () => {
+        console.log('Session VR démarrée');
+        isVRSession = true;
+        document.getElementById('blocker').style.display = 'none';
+        controls.unlock(); // Désactiver les contrôles souris en VR
+      });
+
+      renderer.xr.addEventListener('sessionend', () => {
+        console.log('Session VR terminée');
+        isVRSession = false;
+        if (!controls.isLocked) {
+          document.getElementById('blocker').style.display = 'flex';
+        }
+      });
+    }
+
+    function onSelectStart(event) {
+      const controller = event.target;
+      // Ajouter des effets visuels quand on appuie sur le bouton
+      console.log('Bouton pressé sur contrôleur');
+    }
+
+    function onSelectEnd(event) {
+      const controller = event.target;
+      // Retirer les effets visuels
+      console.log('Bouton relâché sur contrôleur');
     }
 
     // Contrôles clavier
     function onKeyDown(event) {
+      if (isVRSession) return; // Ignorer en VR
+        
       switch (event.code) {
         case 'ArrowUp':
         case 'KeyW':
@@ -214,6 +293,8 @@
     }
 
     function onKeyUp(event) {
+      if (isVRSession) return; // Ignorer en VR
+        
       switch (event.code) {
         case 'ArrowUp':
         case 'KeyW':
@@ -236,7 +317,7 @@
       }
     }
 
-    // Contrôles manette
+    // Contrôles manette (pour VR et desktop)
     function updateGamepads() {
       const gamepadList = navigator.getGamepads ? navigator.getGamepads() : [];
       
@@ -250,31 +331,44 @@
         const leftStick = readStickAxes(gamepad.axes.slice(0, 2));
         const rightStick = readStickAxes(gamepad.axes.slice(2, 4));
         
-        // Déplacement avec stick gauche
-        if (Math.hypot(leftStick.x, leftStick.y) > 0.1) {
-          moveForward = leftStick.y < -0.1;
-          moveBackward = leftStick.y > 0.1;
-          moveLeft = leftStick.x < -0.1;
-          moveRight = leftStick.x > 0.1;
-        } else {
-          // Réinitialiser si stick inactif
-          if (!isKeyPressed()) {
+        if (isVRSession) {
+          // En VR: stick gauche pour le déplacement
+          if (Math.hypot(leftStick.x, leftStick.y) > 0.1) {
+            moveForward = leftStick.y < -0.1;
+            moveBackward = leftStick.y > 0.1;
+            moveLeft = leftStick.x < -0.1;
+            moveRight = leftStick.x > 0.1;
+          } else {
             moveForward = moveBackward = moveLeft = moveRight = false;
           }
-        }
-        
-        // Stick droit - Rotation
-        if (Math.abs(rightStick.x) > 0.1) {
-          rig.rotation.y -= rightStick.x * 0.05 * turnSpeed;
-        }
-        
-        if (Math.abs(rightStick.y) > 0.1 && !controls.isLocked) {
-          // Pitch seulement si les contrôles souris ne sont pas actifs
-          pitchObject.rotation.x = THREE.MathUtils.clamp(
-            pitchObject.rotation.x + rightStick.y * 0.05 * turnSpeed, 
-            -Math.PI/3, 
-            Math.PI/3
-          );
+          
+          // Stick droit pour la rotation en VR
+          if (Math.abs(rightStick.x) > 0.1) {
+            // Rotation snap (comme dans la plupart des jeux VR)
+            rig.rotation.y -= rightStick.x * 0.05 * turnSpeed;
+          }
+        } else {
+          // En desktop
+          if (Math.hypot(leftStick.x, leftStick.y) > 0.1) {
+            moveForward = leftStick.y < -0.1;
+            moveBackward = leftStick.y > 0.1;
+            moveLeft = leftStick.x < -0.1;
+            moveRight = leftStick.x > 0.1;
+          } else if (!isKeyPressed()) {
+            moveForward = moveBackward = moveLeft = moveRight = false;
+          }
+          
+          if (Math.abs(rightStick.x) > 0.1) {
+            rig.rotation.y -= rightStick.x * 0.05 * turnSpeed;
+          }
+          
+          if (Math.abs(rightStick.y) > 0.1 && !controls.isLocked) {
+            pitchObject.rotation.x = THREE.MathUtils.clamp(
+              pitchObject.rotation.x + rightStick.y * 0.05 * turnSpeed, 
+              -Math.PI/3, 
+              Math.PI/3
+            );
+          }
         }
       }
     }
@@ -289,12 +383,11 @@
 
     // Mouvement
     function updateMovement(delta) {
-      // Vitesse de déplacement relative au temps
       const actualMoveSpeed = moveSpeed * delta;
       
       velocity.x -= velocity.x * 10.0 * delta;
       velocity.z -= velocity.z * 10.0 * delta;
-      velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+      velocity.y -= 9.8 * 100.0 * delta;
 
       direction.z = Number(moveForward) - Number(moveBackward);
       direction.x = Number(moveRight) - Number(moveLeft);
@@ -303,8 +396,16 @@
       if (moveForward || moveBackward) velocity.z -= direction.z * actualMoveSpeed;
       if (moveLeft || moveRight) velocity.x -= direction.x * actualMoveSpeed;
 
-      // Appliquer le mouvement dans la direction du regard (yaw seulement)
-      const yaw = rig.rotation.y;
+      // Appliquer le mouvement dans la direction du regard
+      let yaw;
+      if (isVRSession) {
+        // En VR, utiliser la rotation de la caméra directement
+        yaw = camera.rotation.y;
+      } else {
+        // En desktop, utiliser la rotation du rig
+        yaw = rig.rotation.y;
+      }
+      
       const moveX = velocity.x * Math.cos(yaw) - velocity.z * Math.sin(yaw);
       const moveZ = velocity.x * Math.sin(yaw) + velocity.z * Math.cos(yaw);
       
@@ -326,15 +427,15 @@
       const time = performance.now();
       const delta = (time - prevTime) / 1000;
       
-      // Mettre à jour les manettes
       updateGamepads();
       
-      // Mettre à jour le mouvement
-      if (controls.isLocked) {
+      if (!isVRSession && controls.isLocked) {
+        updateMovement(delta);
+      } else if (isVRSession) {
+        // Toujours mettre à jour le mouvement en VR
         updateMovement(delta);
       }
       
-      // Rendu
       renderer.render(scene, camera);
       prevTime = time;
     }

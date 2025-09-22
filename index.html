@@ -99,48 +99,48 @@
       <a-box 
         id="table-top"
         static-body
-        position="0 0.75 0"
+        position="0 1.2 0"  <!-- Hauteur augmentée de 0.75 à 1.2 -->
         width="3" height="0.05" depth="2"
         material="color:#8B4513;roughness:0.8;metalness:0.2"
         shadow="cast:true;receive:true">
       </a-box>
       
-      <!-- Pieds de la table -->
+      <!-- Pieds de la table plus longs -->
       <a-box 
         static-body
-        position="-1.2 0.375 -0.8"
-        width="0.1" height="0.75" depth="0.1"
+        position="-1.2 0.6 -0.8"  <!-- Hauteur ajustée -->
+        width="0.1" height="1.2" depth="0.1"  <!-- Hauteur augmentée -->
         material="color:#654321"
         shadow="cast:true">
       </a-box>
       <a-box 
         static-body
-        position="1.2 0.375 -0.8"
-        width="0.1" height="0.75" depth="0.1"
+        position="1.2 0.6 -0.8"
+        width="0.1" height="1.2" depth="0.1"
         material="color:#654321"
         shadow="cast:true">
       </a-box>
       <a-box 
         static-body
-        position="-1.2 0.375 0.8"
-        width="0.1" height="0.75" depth="0.1"
+        position="-1.2 0.6 0.8"
+        width="0.1" height="1.2" depth="0.1"
         material="color:#654321"
         shadow="cast:true">
       </a-box>
       <a-box 
         static-body
-        position="1.2 0.375 0.8"
-        width="0.1" height="0.75" depth="0.1"
+        position="1.2 0.6 0.8"
+        width="0.1" height="1.2" depth="0.1"
         material="color:#654321"
         shadow="cast:true">
       </a-box>
     </a-entity>
 
-    <!-- Objets sur la table (Exercice 1) -->
+    <!-- Objets sur la table (Exercice 1) - Taille augmentée -->
     <a-box 
       id="box1"
-      position="-0.5 0.85 -2.5" 
-      depth="0.3" height="0.3" width="0.3"
+      position="-0.5 1.3 -2.5"  <!-- Hauteur ajustée à 1.3 -->
+      depth="0.5" height="0.5" width="0.5"  <!-- Taille augmentée -->
       material="color:#c94f4f;roughness:0.8;metalness:0.2"
       dynamic-body="mass: 1"
       shadow="cast:true;receive:true"
@@ -149,8 +149,8 @@
     
     <a-sphere 
       id="sphere1"
-      position="0.5 0.85 -2.5" 
-      radius="0.15"
+      position="0.5 1.3 -2.5"  <!-- Hauteur ajustée -->
+      radius="0.25"  <!-- Taille augmentée -->
       material="color:#4f79c9;roughness:0.6;metalness:0.2"
       dynamic-body="mass: 1"
       shadow="cast:true;receive:true"
@@ -159,8 +159,8 @@
     
     <a-cylinder 
       id="cylinder1"
-      position="0 0.85 -3" 
-      radius="0.15" height="0.3"
+      position="0 1.3 -3"  <!-- Hauteur ajustée -->
+      radius="0.2" height="0.4"  <!-- Taille augmentée -->
       material="color:#4fc94f;roughness:0.7;metalness:0.2"
       dynamic-body="mass: 1"
       shadow="cast:true;receive:true"

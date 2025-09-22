@@ -51,29 +51,29 @@ AFRAME.registerComponent('right-stick-turn', {
   schema:{ turnSpeed:{type:'number',default:120}, deadzone:{type:'number',default:0.08} },
   init(){
     this.x=0; this.y=0;
-    this.rig   = document.querySelector('#rig');
-    this.pitch = document.querySelector('#pitch'); // ⬅️ on cible le pivot
+    this.rig   = document.querySelector('#rig');   // yaw
+    this.pitch = document.querySelector('#pitch'); // pitch
     this.el.addEventListener('axismove', e => {
       const a = readStickAxes(e.detail.axis);
       this.x = a.x; this.y = a.y;
     });
   },
   tick(t,dt){
-    if(!this.rig) return;
+    if(!this.rig || !this.pitch) return;
     const s = this.data.turnSpeed * (dt/1000);
 
-    // Yaw (gauche/droite) – sens inversé (comme avant)
-    let x=this.x;
-    if (Math.abs(x) >= this.data.deadzone) {
-      const rot=this.rig.getAttribute('rotation')||{x:0,y:0,z:0};
-      rot.y -= Math.sign(x)*Math.pow(Math.abs(x),1.3)*s;
+    // --- YAW : rotation autour de Y (gauche/droite) ---
+    if (Math.abs(this.x) >= this.data.deadzone) {
+      const rot = this.rig.getAttribute('rotation') || {x:0,y:0,z:0};
+      rot.y -= this.x * s;   // gauche/droite
       this.rig.setAttribute('rotation', rot);
     }
 
-    // Pitch (haut/bas) — en VR ET en desktop via le pivot
-    if (this.pitch && Math.abs(this.y) >= this.data.deadzone) {
-      const pr=this.pitch.getAttribute('rotation')||{x:0,y:0,z:0};
-      pr.x = clamp(pr.x + (-this.y)*s, -80, 80); // -y = mapping naturel
+    // --- PITCH : rotation autour de X (haut/bas) ---
+    if (Math.abs(this.y) >= this.data.deadzone) {
+      const pr = this.pitch.getAttribute('rotation') || {x:0,y:0,z:0};
+      pr.x = clamp(pr.x + (-this.y * s), -80, 80); // limité entre -80° et +80°
+      pr.z = 0; // sécurité : pas de roll
       this.pitch.setAttribute('rotation', pr);
     }
   }

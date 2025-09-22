@@ -73,6 +73,7 @@
   <div class="instructions">
     🎮 Gauche: déplacer — Droite: tourner<br>
     👊 Main: attraper les objets sur la table<br>
+    👋 Main: pousser les objets (collision physique)<br>
     🔫 Gâchette: tirer<br>
     🎯 Touchez les cibles pour marquer des points
   </div>
@@ -142,9 +143,10 @@
       position="-0.5 3.10 -2.5" 
       depth="0.3" height="0.3" width="0.3"
       material="color:#c94f4f;roughness:0.8;metalness:0.2"
-      dynamic-body="mass: 1"
+      dynamic-body="mass: 1; shape: box"
       shadow="cast:true;receive:true"
-      grabbable>
+      grabbable
+      class="pushable-object">
     </a-box>
     
     <a-sphere 
@@ -152,9 +154,10 @@
       position="0.5 3.10 -2.5" 
       radius="0.15"
       material="color:#4f79c9;roughness:0.6;metalness:0.2"
-      dynamic-body="mass: 1"
+      dynamic-body="mass: 1; shape: sphere"
       shadow="cast:true;receive:true"
-      grabbable>
+      grabbable
+      class="pushable-object">
     </a-sphere>
     
     <a-cylinder 
@@ -162,9 +165,10 @@
       position="0 3.10 -3" 
       radius="0.15" height="0.3"
       material="color:#4fc94f;roughness:0.7;metalness:0.2"
-      dynamic-body="mass: 1"
+      dynamic-body="mass: 1; shape: cylinder"
       shadow="cast:true;receive:true"
-      grabbable>
+      grabbable
+      class="pushable-object">
     </a-cylinder>
 
     <!-- Cibles (Exercice 4) -->
@@ -193,12 +197,14 @@
       <a-entity id="pitch" rotation="0 0 0">
         <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
         
-        <!-- Contrôleurs VR -->
+        <!-- Contrôleurs VR avec collision -->
         <a-entity 
           id="left-hand" 
           hand-controls="hand: left" 
           super-hands
-          left-stick-move="speed:3">
+          left-stick-move="speed:3"
+          sphere-collider="radius: 0.05"
+          hand-collider>
         </a-entity>
         
         <a-entity 
@@ -206,7 +212,9 @@
           hand-controls="hand: right" 
           super-hands
           right-stick-turn="turnSpeed:120; deadzone:0.08"
-          gun-controller>
+          gun-controller
+          sphere-collider="radius: 0.05"
+          hand-collider>
         </a-entity>
       </a-entity>
     </a-entity>
@@ -398,6 +406,61 @@
         }
       });
 
+      // Composant pour la collision des mains avec les objets
+      AFRAME.registerComponent('hand-collider', {
+        init() {
+          this.collisions = new Set();
+          this.impulseStrength = 5;
+          
+          // Écouter les collisions
+          this.el.addEventListener('collision', (e) => {
+            const otherEl = e.detail.body.el;
+            if (otherEl && otherEl.classList.contains('pushable-object')) {
+              this.collisions.add(otherEl);
+              this.applyHandForce(otherEl);
+            }
+          });
+          
+          this.el.addEventListener('collisionended', (e) => {
+            const otherEl = e.detail.body.el;
+            if (otherEl) {
+              this.collisions.delete(otherEl);
+            }
+          });
+        },
+        
+        tick() {
+          // Appliquer une force continue aux objets en collision
+          this.collisions.forEach(obj => {
+            this.applyHandForce(obj);
+          });
+        },
+        
+        applyHandForce(targetEl) {
+          if (!targetEl.body) return;
+          
+          const handPosition = new CANNON.Vec3();
+          handPosition.copy(this.el.object3D.position);
+          
+          const targetPosition = new CANNON.Vec3();
+          targetPosition.copy(targetEl.object3D.position);
+          
+          // Direction de la force (de la main vers l'objet)
+          const forceDirection = new CANNON.Vec3();
+          forceDirection.vsub(targetPosition, handPosition);
+          forceDirection.normalize();
+          
+          // Appliquer une force d'impulsion
+          const impulse = new CANNON.Vec3(
+            forceDirection.x * this.impulseStrength,
+            forceDirection.y * this.impulseStrength,
+            forceDirection.z * this.impulseStrength
+          );
+          
+          targetEl.body.applyImpulse(impulse, targetPosition);
+        }
+      });
+
       // Système de génération de cibles (Exercice 4)
       AFRAME.registerComponent('target-generator', {
         init() {
@@ -442,6 +505,7 @@
         AFRAME.components['super-hands'].schema.grabEndButtons.default = [0, 1, 2];
         
         console.log('Scène VR chargée. Les objets sont sur la table devant vous.');
+        console.log('Vous pouvez maintenant pousser les objets avec vos mains!');
       });
     </script>
   </a-scene>

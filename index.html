@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-super-hands-component@4.0.5/dist/aframe-super-hands.min.js"></script>
 
   <script>
-  // === Utilitaires de ton code original ===
+  // === Utilitaires ===
   function readStickAxes(axis){
     const ax = axis || [];
     let x = ax[0] ?? 0, y = ax[1] ?? 0;
@@ -48,7 +48,7 @@
     }
   });
 
-  // Stick droit = yaw + pitch
+  // Stick droit = yaw + pitch (limité entre -60° et +60°)
   AFRAME.registerComponent('right-stick-turn', {
     schema:{ turnSpeed:{type:'number',default:120}, deadzone:{type:'number',default:0.08} },
     init(){
@@ -71,10 +71,10 @@
         this.rig.setAttribute('rotation', rot);
       }
 
-      // Pitch
+      // Pitch (limité)
       if (Math.abs(this.y) >= this.data.deadzone) {
         const pr=this.pitch.getAttribute('rotation')||{x:0,y:0,z:0};
-        pr.x = clamp(pr.x + (-this.y)*s, -80, 80);
+        pr.x = clamp(pr.x + (-this.y)*s, -60, 60);
         pr.z = 0;
         this.pitch.setAttribute('rotation', pr);
       }
@@ -93,13 +93,13 @@
               rotation="-90 0 0" material="color:#7da07d;roughness:1;metalness:0"
               shadow="receive:true" static-body></a-entity>
 
-    <!-- Objets grabbables -->
-    <a-box position="-1 0.5 -3" depth="1" height="1" width="1"
+    <!-- Objets grabbables (un peu plus hauts) -->
+    <a-box position="-1 1.2 -3" depth="1" height="1" width="1"
            material="color:#c94f4f;roughness:0.8;metalness:0.2"
            shadow="cast:true;receive:true"
            class="grabbable" dynamic-body grabbable></a-box>
 
-    <a-sphere position="1 1 -2.5" radius="0.5"
+    <a-sphere position="1 1.5 -2.5" radius="0.5"
               material="color:#4f79c9;roughness:0.6;metalness:0.2"
               shadow="cast:true;receive:true"
               class="grabbable" dynamic-body grabbable></a-sphere>

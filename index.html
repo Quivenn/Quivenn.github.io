@@ -49,37 +49,53 @@
   });
 
   // Stick droit = yaw + pitch (limité entre -60° et +60°)
-  AFRAME.registerComponent('right-stick-turn', {
-    schema:{ turnSpeed:{type:'number',default:120}, deadzone:{type:'number',default:0.08} },
-    init(){
-      this.x=0; this.y=0;
-      this.rig   = document.querySelector('#rig');
-      this.pitch = document.querySelector('#pitch');
-      this.el.addEventListener('axismove', e => {
-        const a = readStickAxes(e.detail.axis);
-        this.x = a.x; this.y = a.y;
-      });
-    },
-    tick(t,dt){
-      if(!this.rig || !this.pitch) return;
-      const s = this.data.turnSpeed * (dt/1000);
+AFRAME.registerComponent('right-stick-turn', {
+  schema:{ turnSpeed:{type:'number',default:120}, deadzone:{type:'number',default:0.08} },
+  init(){
+    this.x=0; this.y=0;
+    this.rig   = document.querySelector('#rig');   // yaw
+    this.pitch = document.querySelector('#pitch'); // pitch
+    this.el.addEventListener('axismove', e => {
+      const a = readStickAxes(e.detail.axis);
+      this.x = a.x; this.y = a.y;
+    });
+  },
+  tick(t,dt){
+    if(!this.rig || !this.pitch) return;
+    const s = this.data.turnSpeed * (dt/1000);
 
-      // Yaw
-      if (Math.abs(this.x) >= this.data.deadzone) {
-        const rot=this.rig.getAttribute('rotation')||{x:0,y:0,z:0};
-        rot.y -= this.x * s;
-        this.rig.setAttribute('rotation', rot);
-      }
-
-      // Pitch (limité)
-      if (Math.abs(this.y) >= this.data.deadzone) {
-        const pr=this.pitch.getAttribute('rotation')||{x:0,y:0,z:0};
-        pr.x = clamp(pr.x + (-this.y)*s, -60, 60);
-        pr.z = 0;
-        this.pitch.setAttribute('rotation', pr);
-      }
+    // --- Yaw : gauche/droite ---
+    if (Math.abs(this.x) >= this.data.deadzone) {
+      const rot = this.rig.getAttribute('rotation') || {x:0,y:0,z:0};
+      rot.y -= this.x * s; // stick droit → tourne horizontalement
+      this.rig.setAttribute('rotation', rot);
     }
-  });
+
+    // --- Pitch : haut/bas ---
+    if (Math.abs(this.y) >= this.data.deadzone) {
+      const pr = this.pitch.getAttribute('rotation') || {x:0,y:0,z:0};
+      pr.x = clamp(pr.x + (-this.y * s), -60, 60); // limite réaliste
+      pr.z = 0; // pas de roll
+      this.pitch.setAttribute('rotation', pr);
+    }
+  }
+});
+AFRAME.registerComponent('grab-feedback', {
+  init: function () {
+    const el = this.el;
+    // couleur de base
+    el.setAttribute('material', 'color', '#FFF');
+    el.addEventListener('buttonchanged', e => {
+      // e.detail.state.pressed = true si bouton enfoncé
+      if (e.detail.state.pressed) {
+        el.setAttribute('material', 'color', '#0F0'); // vert = bouton appuyé
+      } else {
+        el.setAttribute('material', 'color', '#FFF'); // blanc = relâché
+      }
+    });
+  }
+});
+
   </script>
 </head>
 <body>
@@ -111,22 +127,35 @@
               position="5 8 3" rotation="-45 30 0"></a-entity>
     <a-sky color="#ECECEC"></a-sky>
 
-    <!-- Rig + caméra + contrôleurs -->
+        <!-- Rig + caméra + contrôleurs -->
     <a-entity id="rig" position="0 1.6 5" rotation="0 0 0">
       <a-entity id="pitch" rotation="0 0 0">
         <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
       </a-entity>
 
       <!-- Contrôleurs VR -->
-      <a-entity id="left"  hand-controls="hand: left"
-                left-stick-move="speed:3"
-                super-hands
-                sphere-collider="objects: .grabbable"></a-entity>
+      <!-- Main gauche -->
+    <a-entity id="left"
+              hand-controls="hand: left"
+              geometry="primitive:box; depth:0.1; height:0.1; width:0.2"
+              material="color:#FFF"
+              left-stick-move="speed:3"
+              super-hands
+              grab-feedback
+              sphere-collider="objects: .grabbable">
+    </a-entity>
 
-      <a-entity id="right" hand-controls="hand: right"
-                right-stick-turn="turnSpeed:120; deadzone:0.08"
-                super-hands
-                sphere-collider="objects: .grabbable"></a-entity>
+    <!-- Main droite -->
+    <a-entity id="right"
+              hand-controls="hand: right"
+              geometry="primitive:box; depth:0.1; height:0.1; width:0.2"
+              material="color:#FFF"
+              right-stick-turn="turnSpeed:120; deadzone:0.08"
+              super-hands
+              grab-feedback
+              sphere-collider="objects: .grabbable">
+    </a-entity>
+
     </a-entity>
 
     <a-entity webxr="optionalFeatures: local-floor, bounded-floor"></a-entity>

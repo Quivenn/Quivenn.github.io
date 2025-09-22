@@ -72,7 +72,7 @@
   <div class="score">Cibles touchées: <span id="score">0</span></div>
   <div class="instructions">
     🎮 Gauche: déplacer — Droite: tourner<br>
-    👊 Main: attraper les objets<br>
+    👊 Main: attraper les objets sur la table<br>
     🔫 Gâchette: tirer<br>
     🎯 Touchez les cibles pour marquer des points
   </div>
@@ -93,11 +93,54 @@
       shadow="receive:true">
     </a-entity>
 
-    <!-- Objets de base (Exercice 1) -->
+    <!-- Table pour placer les objets à hauteur accessible -->
+    <a-entity id="table" position="0 0 -3">
+      <!-- Plateau de la table -->
+      <a-box 
+        id="table-top"
+        static-body
+        position="0 0.75 0"
+        width="3" height="0.05" depth="2"
+        material="color:#8B4513;roughness:0.8;metalness:0.2"
+        shadow="cast:true;receive:true">
+      </a-box>
+      
+      <!-- Pieds de la table -->
+      <a-box 
+        static-body
+        position="-1.2 0.375 -0.8"
+        width="0.1" height="0.75" depth="0.1"
+        material="color:#654321"
+        shadow="cast:true">
+      </a-box>
+      <a-box 
+        static-body
+        position="1.2 0.375 -0.8"
+        width="0.1" height="0.75" depth="0.1"
+        material="color:#654321"
+        shadow="cast:true">
+      </a-box>
+      <a-box 
+        static-body
+        position="-1.2 0.375 0.8"
+        width="0.1" height="0.75" depth="0.1"
+        material="color:#654321"
+        shadow="cast:true">
+      </a-box>
+      <a-box 
+        static-body
+        position="1.2 0.375 0.8"
+        width="0.1" height="0.75" depth="0.1"
+        material="color:#654321"
+        shadow="cast:true">
+      </a-box>
+    </a-entity>
+
+    <!-- Objets sur la table (Exercice 1) -->
     <a-box 
       id="box1"
-      position="-1 0.5 -3" 
-      depth="1" height="1" width="1"
+      position="-0.5 0.85 -2.5" 
+      depth="0.3" height="0.3" width="0.3"
       material="color:#c94f4f;roughness:0.8;metalness:0.2"
       dynamic-body="mass: 1"
       shadow="cast:true;receive:true"
@@ -106,13 +149,23 @@
     
     <a-sphere 
       id="sphere1"
-      position="1 1 -2.5" 
-      radius="0.5"
+      position="0.5 0.85 -2.5" 
+      radius="0.15"
       material="color:#4f79c9;roughness:0.6;metalness:0.2"
       dynamic-body="mass: 1"
       shadow="cast:true;receive:true"
       grabbable>
     </a-sphere>
+    
+    <a-cylinder 
+      id="cylinder1"
+      position="0 0.85 -3" 
+      radius="0.15" height="0.3"
+      material="color:#4fc94f;roughness:0.7;metalness:0.2"
+      dynamic-body="mass: 1"
+      shadow="cast:true;receive:true"
+      grabbable>
+    </a-cylinder>
 
     <!-- Cibles (Exercice 4) -->
     <a-entity id="targets"></a-entity>
@@ -136,7 +189,7 @@
     <a-sky color="#87CEEB"></a-sky>
 
     <!-- Rig + caméra + contrôleurs -->
-    <a-entity id="rig" position="0 1.6 5" rotation="0 0 0">
+    <a-entity id="rig" position="0 1.6 0" rotation="0 0 0">
       <a-entity id="pitch" rotation="0 0 0">
         <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
         
@@ -331,17 +384,15 @@
               score++;
               document.getElementById('score').textContent = score;
               
-              // Jouer un son d'impact
-              const hitSound = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA');
-              hitSound.volume = 0.3;
-              hitSound.play().catch(e => console.log("Audio play failed:", e));
+              // Effet visuel simple pour la cible touchée
+              e.detail.body.el.setAttribute('material', 'color: #FFFF00');
               
-              // Supprimer la cible
+              // Supprimer la cible après un court délai
               setTimeout(() => {
                 if (e.detail.body.el.parentNode) {
                   e.detail.body.el.parentNode.removeChild(e.detail.body.el);
                 }
-              }, 100);
+              }, 200);
             }
           });
         }
@@ -361,7 +412,7 @@
         },
         createTarget() {
           const targetsContainer = document.querySelector('#targets');
-          if (targetsContainer.children.length >= 10) return; // Limite de cibles
+          if (targetsContainer.children.length >= 8) return; // Limite de cibles
           
           const target = document.createElement('a-cylinder');
           const id = 'target-' + Date.now();
@@ -370,11 +421,12 @@
           target.setAttribute('height', '0.05');
           target.setAttribute('color', '#FF0000');
           target.setAttribute('position', {
-            x: (Math.random() * 20) - 10,
+            x: (Math.random() * 15) - 7.5,
             y: 1.5,
-            z: (Math.random() * 20) - 10
+            z: (Math.random() * 15) - 7.5
           });
           target.setAttribute('static-body', '');
+          target.setAttribute('shadow', 'cast:true;receive:true');
           
           targetsContainer.appendChild(target);
         }
@@ -388,6 +440,8 @@
         // Configurer super-hands pour l'interaction
         AFRAME.components['super-hands'].schema.grabStartButtons.default = [0, 1, 2];
         AFRAME.components['super-hands'].schema.grabEndButtons.default = [0, 1, 2];
+        
+        console.log('Scène VR chargée. Les objets sont sur la table devant vous.');
       });
     </script>
   </a-scene>

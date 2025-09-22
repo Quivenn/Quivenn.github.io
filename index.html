@@ -99,20 +99,33 @@ AFRAME.registerComponent('right-stick-turn', {
 
 
     <!-- Sol -->
-    <a-entity id="ground" geometry="primitive:plane;width:40;height:40"
-              rotation="-90 0 0" material="color:#7da07d;roughness:1;metalness:0"
-              shadow="receive:true"></a-entity>
+    <a-entity id="ground"
+          geometry="primitive:plane; width:40; height:40"
+          rotation="-90 0 0"
+          material="color:#7da07d; roughness:1; metalness:0"
+          shadow="receive:true"
+          static-body>
+</a-entity>
+
 
     <!-- Objets -->
-    <a-box position="-1 0.5 -3" depth="1" height="1" width="1"
-       material="color:#c94f4f;roughness:0.8;metalness:0.2"
-       shadow="cast:true;receive:true"
-       dynamic-body grabbable></a-box>
+    <a-box position="-1 0.5 -3"
+       depth="1" height="1" width="1"
+       material="color:#c94f4f; roughness:0.8; metalness:0.2"
+       shadow="cast:true; receive:true"
+       class="grabbable"
+       dynamic-body
+       grabbable>
+    </a-box>
 
     <a-sphere position="1 1 -2.5" radius="0.5"
-          material="color:#4f79c9;roughness:0.6;metalness:0.2"
-          shadow="cast:true;receive:true"
-          dynamic-body grabbable></a-sphere>
+              material="color:#4f79c9; roughness:0.6; metalness:0.2"
+              shadow="cast:true; receive:true"
+              class="grabbable"
+              dynamic-body
+              grabbable>
+    </a-sphere>
+
 
 
     <!-- Lumières -->
@@ -129,14 +142,19 @@ AFRAME.registerComponent('right-stick-turn', {
     <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
 
     <!-- Déplace les contrôleurs ici pour qu'ils suivent aussi le pitch -->
-    <a-entity id="left" hand-controls="hand: left"
-          left-stick-move="speed:3"
-          super-hands
-          sphere-collider="objects: .grabbable"></a-entity>
-    <a-entity id="right" hand-controls="hand: right"
-          right-stick-turn="turnSpeed:120; deadzone:0.08"
-          super-hands
-          sphere-collider="objects: .grabbable"></a-entity>
+    <a-entity id="left"
+              hand-controls="hand: left"
+              left-stick-move="speed:3"
+              super-hands
+              sphere-collider="objects: .grabbable">
+    </a-entity>
+
+    <a-entity id="right"
+              hand-controls="hand: right"
+              right-stick-turn="turnSpeed:120; deadzone:0.08"
+              super-hands
+              sphere-collider="objects: .grabbable">
+    </a-entity>
   </a-entity>
 </a-entity>
 

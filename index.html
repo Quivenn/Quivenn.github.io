@@ -5,6 +5,9 @@
   <title>SceneVR – Exercice 1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/n5ro/aframe-physics-system@v4.0.1/dist/aframe-physics-system.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-super-hands-component@4.0.5/dist/aframe-super-hands.min.js"></script>
+
 
   <script>
   // Utilitaires
@@ -90,8 +93,10 @@ AFRAME.registerComponent('right-stick-turn', {
   <div class="hud">🎮 Gauche: déplacer — Droite: tourner (desktop: stick droit = yaw + pitch)</div>
 
   <a-scene
-    renderer="antialias:true; physicallyCorrectLights:true; colorManagement:true; logarithmicDepthBuffer:true; sortTransparentObjects:true"
-    shadow="type: pcfsoft">
+  physics="debug: false; gravity: -9.8"
+  renderer="antialias:true; physicallyCorrectLights:true; colorManagement:true; logarithmicDepthBuffer:true; sortTransparentObjects:true"
+  shadow="type: pcfsoft">
+
 
     <!-- Sol -->
     <a-entity id="ground" geometry="primitive:plane;width:40;height:40"
@@ -100,11 +105,15 @@ AFRAME.registerComponent('right-stick-turn', {
 
     <!-- Objets -->
     <a-box position="-1 0.5 -3" depth="1" height="1" width="1"
-           material="color:#c94f4f;roughness:0.8;metalness:0.2"
-           shadow="cast:true;receive:true"></a-box>
-    <a-sphere position="1 1 -2.5" radius="1"
-              material="color:#4f79c9;roughness:0.6;metalness:0.2"
-              shadow="cast:true;receive:true"></a-sphere>
+       material="color:#c94f4f;roughness:0.8;metalness:0.2"
+       shadow="cast:true;receive:true"
+       dynamic-body grabbable></a-box>
+
+    <a-sphere position="1 1 -2.5" radius="0.5"
+          material="color:#4f79c9;roughness:0.6;metalness:0.2"
+          shadow="cast:true;receive:true"
+          dynamic-body grabbable></a-sphere>
+
 
     <!-- Lumières -->
     <a-entity light="type:ambient;intensity:0.35;color:#fff"></a-entity>
@@ -120,8 +129,14 @@ AFRAME.registerComponent('right-stick-turn', {
     <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
 
     <!-- Déplace les contrôleurs ici pour qu'ils suivent aussi le pitch -->
-    <a-entity id="left"  hand-controls="hand: left"  left-stick-move="speed:3"></a-entity>
-    <a-entity id="right" hand-controls="hand: right" right-stick-turn="turnSpeed:120; deadzone:0.08"></a-entity>
+    <a-entity id="left" hand-controls="hand: left"
+          left-stick-move="speed:3"
+          super-hands
+          sphere-collider="objects: .grabbable"></a-entity>
+    <a-entity id="right" hand-controls="hand: right"
+          right-stick-turn="turnSpeed:120; deadzone:0.08"
+          super-hands
+          sphere-collider="objects: .grabbable"></a-entity>
   </a-entity>
 </a-entity>
 

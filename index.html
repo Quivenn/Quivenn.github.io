@@ -9,7 +9,6 @@
   <script>
   // Utilitaires
   function readStickAxes(axis){
-    // Certains profils/émulateurs envoient les sticks sur [2,3]
     const ax = axis || [];
     let x = ax[0] ?? 0, y = ax[1] ?? 0;
     if (Math.abs(x) < 0.001 && Math.abs(y) < 0.001 && ax.length >= 4) {
@@ -19,7 +18,7 @@
   }
   function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
-  // Joystick gauche = déplacement (g/d inversé corrigé)
+  // Joystick gauche = déplacement
   AFRAME.registerComponent('left-stick-move', {
     schema: { speed: {type:'number', default:3}, deadzone:{type:'number', default:0.05} },
     init() {
@@ -40,45 +39,44 @@
       const right  =new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)).negate();
 
       this.rig.object3D.position
-        .addScaledVector(forward, -y*s)  // avancer/reculer (inverse si tu préfères)
-        .addScaledVector(right,   -x*s); // gauche/droite (inversé corrigé)
+        .addScaledVector(forward, -y*s)
+        .addScaledVector(right,   -x*s);
     }
   });
 
-  // Joystick droit = yaw (VR+desktop) + pitch (desktop seulement)
+  // Joystick droit = yaw + pitch
+  AFRAME.registerComponent('right-stick-turn', {
+    schema:{ turnSpeed:{type:'number',default:120}, deadzone:{type:'number',default:0.08} },
+    init(){
+      this.x=0; this.y=0;
+      this.rig   = document.querySelector('#rig');
+      this.pitch = document.querySelector('#pitch');
+      this.el.addEventListener('axismove', e => {
+        const a = readStickAxes(e.detail.axis);
+        this.x = a.x; this.y = a.y;
+      });
+    },
+    tick(t,dt){
+      if(!this.rig || !this.pitch) return;
+      const s = this.data.turnSpeed * (dt/1000);
 
-AFRAME.registerComponent('right-stick-turn', {
-  schema:{ turnSpeed:{type:'number',default:120}, deadzone:{type:'number',default:0.08} },
-  init(){
-    this.x=0; this.y=0;
-    this.rig   = document.querySelector('#rig');   // yaw
-    this.pitch = document.querySelector('#pitch'); // pitch
-    this.el.addEventListener('axismove', e => {
-      const a = readStickAxes(e.detail.axis);
-      this.x = a.x; this.y = a.y;
-    });
-  },
-  tick(t,dt){
-    if(!this.rig || !this.pitch) return;
-    const s = this.data.turnSpeed * (dt/1000);
+      // YAW
+      if (Math.abs(this.x) >= this.data.deadzone) {
+        const rot = this.rig.getAttribute('rotation') || {x:0,y:0,z:0};
+        rot.y -= this.x * s;
+        this.rig.setAttribute('rotation', rot);
+      }
 
-    // --- YAW : rotation autour de Y (gauche/droite) ---
-    if (Math.abs(this.x) >= this.data.deadzone) {
-      const rot = this.rig.getAttribute('rotation') || {x:0,y:0,z:0};
-      rot.y -= this.x * s;   // gauche/droite
-      this.rig.setAttribute('rotation', rot);
+      // PITCH
+      if (Math.abs(this.y) >= this.data.deadzone) {
+        const pr = this.pitch.getAttribute('rotation') || {x:0,y:0,z:0};
+        pr.x = clamp(pr.x + (-this.y * s), -80, 80);
+        pr.z = 0;
+        this.pitch.setAttribute('rotation', pr);
+      }
     }
-
-    // --- PITCH : rotation autour de X (haut/bas) ---
-    if (Math.abs(this.y) >= this.data.deadzone) {
-      const pr = this.pitch.getAttribute('rotation') || {x:0,y:0,z:0};
-      pr.x = clamp(pr.x + (-this.y * s), -80, 80); // limité entre -80° et +80°
-      pr.z = 0; // sécurité : pas de roll
-      this.pitch.setAttribute('rotation', pr);
-    }
-  }
-});
-</script>
+  });
+  </script>
 
   <style>
     html,body{margin:0;height:100%}
@@ -87,7 +85,7 @@ AFRAME.registerComponent('right-stick-turn', {
   </style>
 </head>
 <body>
-  <div class="hud">🎮 Gauche: déplacer — Droite: tourner (desktop: stick droit = yaw + pitch)</div>
+  <div class="hud">🎮 Gauche: déplacer — Droite: tourner</div>
 
   <a-scene
     renderer="antialias:true; physicallyCorrectLights:true; colorManagement:true; logarithmicDepthBuffer:true; sortTransparentObjects:true"
@@ -115,23 +113,20 @@ AFRAME.registerComponent('right-stick-turn', {
     <a-sky src="panorama_image.png" rotation="0 -90 0"></a-sky>
 
     <!-- Rig + caméra + contrôleurs -->
-<a-entity id="rig" position="0 1.6 5" rotation="0 0 0" wasd-controls="acceleration:20">
-  <a-entity id="pitch" rotation="0 0 0">
-    <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
-
-    <!-- Déplace les contrôleurs ici pour qu'ils suivent aussi le pitch -->
-    <a-entity id="left"  hand-controls="hand: left"  left-stick-move="speed:3"></a-entity>
-    <a-entity id="right" hand-controls="hand: right" right-stick-turn="turnSpeed:120; deadzone:0.08"></a-entity>
-  </a-entity>
-</a-entity>
-
-
-</a-entity>
+    <a-entity id="rig" position="0 1.6 5" rotation="0 0 0" wasd-controls="acceleration:20">
+      <a-entity id="pitch" rotation="0 0 0">
+        <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
+      </a-entity>
+      
+      <!-- Contrôleurs mains en dehors du pitch -->
+      <a-entity id="left"  hand-controls="hand: left"  left-stick-move="speed:3"></a-entity>
+      <a-entity id="right" hand-controls="hand: right" right-stick-turn="turnSpeed:120; deadzone:0.08"></a-entity>
+    </a-entity>
 
     <!-- WebXR -->
     <a-entity webxr="optionalFeatures: local-floor, bounded-floor"></a-entity>
 
-    <!-- (Optionnel) Logs sticks/boutons pour debug -->
+    <!-- Debug -->
     <script>
       document.querySelector('a-scene').addEventListener('loaded', () => {
         ['left','right'].forEach(id=>{

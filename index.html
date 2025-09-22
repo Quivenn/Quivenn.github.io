@@ -2,149 +2,353 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>SceneVR – Exercice 1</title>
+  <title>SceneVR – Three.js Version</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
-  <script>
-  // Utilitaires
-  function readStickAxes(axis){
-    const ax = axis || [];
-    let x = ax[0] ?? 0, y = ax[1] ?? 0;
-    if (Math.abs(x) < 0.001 && Math.abs(y) < 0.001 && ax.length >= 4) {
-      x = ax[2] ?? 0; y = ax[3] ?? 0;
-    }
-    return {x, y};
-  }
-  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
-
-  // Joystick gauche = déplacement
-  AFRAME.registerComponent('left-stick-move', {
-    schema: { speed: {type:'number', default:3}, deadzone:{type:'number', default:0.05} },
-    init() {
-      this.axis = {x:0,y:0};
-      this.rig  = document.querySelector('#rig');
-      this.cam  = document.querySelector('#head');
-      this.el.addEventListener('axismove', e => { this.axis = readStickAxes(e.detail.axis); });
-    },
-    tick(t,dt){
-      if(!this.rig||!this.cam) return;
-      const s = this.data.speed*(dt/1000);
-      let {x,y} = this.axis;
-      if (Math.hypot(x,y) < this.data.deadzone) return;
-
-      const yaw=(this.rig.getAttribute('rotation')?.y||0)+(this.cam.getAttribute('rotation')?.y||0);
-      const rad=THREE.MathUtils.degToRad(yaw);
-      const forward=new THREE.Vector3(-Math.sin(rad),0,-Math.cos(rad));
-      const right  =new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)).negate();
-
-      this.rig.object3D.position
-        .addScaledVector(forward, -y*s)
-        .addScaledVector(right,   -x*s);
-    }
-  });
-
-  // Joystick droit = yaw + pitch (MAINTENANT pitch seulement en desktop)
-  AFRAME.registerComponent('right-stick-turn', {
-    schema:{ 
-      turnSpeed:{type:'number',default:120}, 
-      deadzone:{type:'number',default:0.08},
-      enablePitch: {type: 'boolean', default: false} // Désactivé en VR
-    },
-    init(){
-      this.x=0; this.y=0;
-      this.rig   = document.querySelector('#rig');
-      this.pitch = document.querySelector('#pitch');
-      this.el.addEventListener('axismove', e => {
-        const a = readStickAxes(e.detail.axis);
-        this.x = a.x; this.y = a.y;
-      });
-      
-      // Détecter si on est en VR
-      this.isVR = false;
-      this.el.sceneEl.addEventListener('enter-vr', () => { this.isVR = true; });
-      this.el.sceneEl.addEventListener('exit-vr', () => { this.isVR = false; });
-    },
-    tick(t,dt){
-      if(!this.rig || !this.pitch) return;
-      const s = this.data.turnSpeed * (dt/1000);
-
-      // YAW - toujours actif
-      if (Math.abs(this.x) >= this.data.deadzone) {
-        const rot = this.rig.getAttribute('rotation') || {x:0,y:0,z:0};
-        rot.y -= this.x * s;
-        this.rig.setAttribute('rotation', rot);
-      }
-
-      // PITCH - seulement en mode desktop (pas en VR)
-      if (!this.isVR && Math.abs(this.y) >= this.data.deadzone) {
-        const pr = this.pitch.getAttribute('rotation') || {x:0,y:0,z:0};
-        pr.x = clamp(pr.x + (-this.y * s), -80, 80);
-        pr.z = 0;
-        this.pitch.setAttribute('rotation', pr);
-      }
-    }
-  });
-  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/stats.min.js"></script>
 
   <style>
-    html,body{margin:0;height:100%}
-    a-scene{position:fixed;inset:0}
-    .hud{position:fixed;left:12px;top:12px;padding:8px 12px;background:#0008;color:#fff;border-radius:8px;font-family:system-ui}
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: system-ui;
+    }
+    
+    canvas {
+      display: block;
+    }
+    
+    .hud {
+      position: fixed;
+      left: 12px;
+      top: 12px;
+      padding: 8px 12px;
+      background: #0008;
+      color: #fff;
+      border-radius: 8px;
+      z-index: 100;
+      pointer-events: none;
+    }
+    
+    #blocker {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-size: 14px;
+      z-index: 1000;
+    }
+    
+    #instructions {
+      text-align: center;
+      background: #0008;
+      padding: 20px;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
-  <div class="hud">🎮 Gauche: déplacer — Droite: tourner</div>
+  <div class="hud">🎮 ZQSD: déplacer — Souris: regarder — Clic: activer</div>
+  <div id="blocker">
+    <div id="instructions">
+      Cliquez pour jouer<br/>
+      ZQSD pour se déplacer, souris pour regarder
+    </div>
+  </div>
 
-  <a-scene
-    renderer="antialias:true; physicallyCorrectLights:true; colorManagement:true; logarithmicDepthBuffer:true; sortTransparentObjects:true"
-    shadow="type: pcfsoft">
+  <script>
+    // Variables globales
+    let scene, camera, renderer, controls;
+    let rig, head, pitchObject;
+    let gamepads = {};
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let canJump = false;
+    let prevTime = performance.now();
+    let velocity = new THREE.Vector3();
+    let direction = new THREE.Vector3();
 
-    <!-- Sol -->
-    <a-entity id="ground" geometry="primitive:plane;width:40;height:40"
-              rotation="-90 0 0" material="color:#7da07d;roughness:1;metalness:0"
-              shadow="receive:true"></a-entity>
+    // Constantes
+    const moveSpeed = 5;
+    const turnSpeed = 2;
 
-    <!-- Objets -->
-    <a-box position="-1 0.5 -3" depth="1" height="1" width="1"
-           material="color:#c94f4f;roughness:0.8;metalness:0.2"
-           shadow="cast:true;receive:true"></a-box>
-    <a-sphere position="1 1 -2.5" radius="1"
-              material="color:#4f79c9;roughness:0.6;metalness:0.2"
-              shadow="cast:true;receive:true"></a-sphere>
+    // Initialisation
+    function init() {
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x88ccff);
+      scene.fog = new THREE.Fog(0x88ccff, 0, 50);
 
-    <!-- Lumières -->
-    <a-entity light="type:ambient;intensity:0.35;color:#fff"></a-entity>
-    <a-entity id="sun"
-              light="type:directional;intensity:1;castShadow:true;shadowBias:-0.0003"
-              position="5 8 3" rotation="-45 30 0"></a-entity>
+      // Camera et rig
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      
+      // Structure rig -> pitch -> head (camera)
+      rig = new THREE.Group();
+      pitchObject = new THREE.Group();
+      head = new THREE.Group();
+      
+      pitchObject.add(head);
+      head.add(camera);
+      rig.add(pitchObject);
+      scene.add(rig);
+      
+      // Position initiale
+      rig.position.set(0, 1.6, 5);
+      camera.position.set(0, 0, 0);
 
-    <a-sky src="panorama_image.png" rotation="0 -90 0"></a-sky>
+      // Rendu
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.body.appendChild(renderer.domElement);
 
-    <!-- Rig + caméra + contrôleurs CORRIGÉ -->
-    <a-entity id="rig" position="0 1.6 5" rotation="0 0 0" wasd-controls="acceleration:20">
-      <a-entity id="pitch" rotation="0 0 0">
-        <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
-        
-        <!-- LES MAINS DOIVENT ÊTRE ICI POUR SUIVRE LA TÊTE -->
-        <a-entity id="left"  hand-controls="hand: left"  left-stick-move="speed:3"></a-entity>
-        <a-entity id="right" hand-controls="hand: right" right-stick-turn="turnSpeed:120; deadzone:0.08"></a-entity>
-      </a-entity>
-    </a-entity>
-
-    <!-- WebXR -->
-    <a-entity webxr="optionalFeatures: local-floor, bounded-floor"></a-entity>
-
-    <!-- Debug -->
-    <script>
-      document.querySelector('a-scene').addEventListener('loaded', () => {
-        ['left','right'].forEach(id=>{
-          const el=document.getElementById(id);
-          el.addEventListener('axismove', e=>console.log(id,'axes',e.detail.axis));
-          el.addEventListener('buttonchanged', e=>console.log(id,'button',e.detail));
-        });
+      // Contrôles souris
+      controls = new THREE.PointerLockControls(camera, document.body);
+      
+      const blocker = document.getElementById('blocker');
+      const instructions = document.getElementById('instructions');
+      
+      instructions.addEventListener('click', function() {
+        controls.lock();
       });
-    </script>
-  </a-scene>
+      
+      controls.addEventListener('lock', function() {
+        instructions.style.display = 'none';
+        blocker.style.display = 'none';
+      });
+      
+      controls.addEventListener('unlock', function() {
+        blocker.style.display = 'block';
+        instructions.style.display = '';
+      });
+
+      // Éclairage
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+      scene.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 8, 3);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.bias = -0.0003;
+      directionalLight.shadow.mapSize.width = 2048;
+      directionalLight.shadow.mapSize.height = 2048;
+      scene.add(directionalLight);
+
+      // Sol
+      const groundGeometry = new THREE.PlaneGeometry(40, 40);
+      const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x7da07d });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      // Objets
+      const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const boxMaterial = new THREE.MeshLambertMaterial({ color: 0xc94f4f });
+      const box = new THREE.Mesh(boxGeometry, boxMaterial);
+      box.position.set(-1, 0.5, -3);
+      box.castShadow = true;
+      box.receiveShadow = true;
+      scene.add(box);
+
+      const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
+      const sphereMaterial = new THREE.MeshLambertMaterial({ color: 0x4f79c9 });
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      sphere.position.set(1, 1, -2.5);
+      sphere.castShadow = true;
+      sphere.receiveShadow = true;
+      scene.add(sphere);
+
+      // Événements clavier
+      document.addEventListener('keydown', onKeyDown, false);
+      document.addEventListener('keyup', onKeyUp, false);
+      
+      // Événements manettes
+      window.addEventListener("gamepadconnected", (e) => {
+        console.log("Manette connectée:", e.gamepad.id);
+        gamepads[e.gamepad.index] = e.gamepad;
+      });
+      
+      window.addEventListener("gamepaddisconnected", (e) => {
+        console.log("Manette déconnectée:", e.gamepad.id);
+        delete gamepads[e.gamepad.index];
+      });
+
+      // Redimensionnement
+      window.addEventListener('resize', onWindowResize, false);
+    }
+
+    // Contrôles clavier
+    function onKeyDown(event) {
+      switch (event.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+        case 'KeyZ': // AZERTY
+          moveForward = true;
+          break;
+        case 'ArrowLeft':
+        case 'KeyA':
+        case 'KeyQ': // AZERTY
+          moveLeft = true;
+          break;
+        case 'ArrowDown':
+        case 'KeyS':
+          moveBackward = true;
+          break;
+        case 'ArrowRight':
+        case 'KeyD':
+          moveRight = true;
+          break;
+        case 'Space':
+          if (canJump === true) velocity.y += 350;
+          canJump = false;
+          break;
+      }
+    }
+
+    function onKeyUp(event) {
+      switch (event.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+        case 'KeyZ': // AZERTY
+          moveForward = false;
+          break;
+        case 'ArrowLeft':
+        case 'KeyA':
+        case 'KeyQ': // AZERTY
+          moveLeft = false;
+          break;
+        case 'ArrowDown':
+        case 'KeyS':
+          moveBackward = false;
+          break;
+        case 'ArrowRight':
+        case 'KeyD':
+          moveRight = false;
+          break;
+      }
+    }
+
+    // Contrôles manette
+    function updateGamepads() {
+      const gamepadList = navigator.getGamepads ? navigator.getGamepads() : [];
+      
+      for (let i = 0; i < gamepadList.length; i++) {
+        const gamepad = gamepadList[i];
+        if (!gamepad) continue;
+        
+        gamepads[gamepad.index] = gamepad;
+        
+        // Stick gauche - Déplacement
+        const leftStick = readStickAxes(gamepad.axes.slice(0, 2));
+        const rightStick = readStickAxes(gamepad.axes.slice(2, 4));
+        
+        // Déplacement avec stick gauche
+        if (Math.hypot(leftStick.x, leftStick.y) > 0.1) {
+          moveForward = leftStick.y < -0.1;
+          moveBackward = leftStick.y > 0.1;
+          moveLeft = leftStick.x < -0.1;
+          moveRight = leftStick.x > 0.1;
+        } else {
+          // Réinitialiser si stick inactif
+          if (!isKeyPressed()) {
+            moveForward = moveBackward = moveLeft = moveRight = false;
+          }
+        }
+        
+        // Stick droit - Rotation
+        if (Math.abs(rightStick.x) > 0.1) {
+          rig.rotation.y -= rightStick.x * 0.05 * turnSpeed;
+        }
+        
+        if (Math.abs(rightStick.y) > 0.1 && !controls.isLocked) {
+          // Pitch seulement si les contrôles souris ne sont pas actifs
+          pitchObject.rotation.x = THREE.MathUtils.clamp(
+            pitchObject.rotation.x + rightStick.y * 0.05 * turnSpeed, 
+            -Math.PI/3, 
+            Math.PI/3
+          );
+        }
+      }
+    }
+    
+    function readStickAxes(axes) {
+      return { x: axes[0] || 0, y: axes[1] || 0 };
+    }
+    
+    function isKeyPressed() {
+      return moveForward || moveBackward || moveLeft || moveRight;
+    }
+
+    // Mouvement
+    function updateMovement(delta) {
+      // Vitesse de déplacement relative au temps
+      const actualMoveSpeed = moveSpeed * delta;
+      
+      velocity.x -= velocity.x * 10.0 * delta;
+      velocity.z -= velocity.z * 10.0 * delta;
+      velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+
+      direction.z = Number(moveForward) - Number(moveBackward);
+      direction.x = Number(moveRight) - Number(moveLeft);
+      direction.normalize();
+
+      if (moveForward || moveBackward) velocity.z -= direction.z * actualMoveSpeed;
+      if (moveLeft || moveRight) velocity.x -= direction.x * actualMoveSpeed;
+
+      // Appliquer le mouvement dans la direction du regard (yaw seulement)
+      const yaw = rig.rotation.y;
+      const moveX = velocity.x * Math.cos(yaw) - velocity.z * Math.sin(yaw);
+      const moveZ = velocity.x * Math.sin(yaw) + velocity.z * Math.cos(yaw);
+      
+      rig.position.x += moveX * delta;
+      rig.position.z += moveZ * delta;
+      
+      // Garder le joueur au sol
+      if (rig.position.y < 1.6) {
+        velocity.y = 0;
+        rig.position.y = 1.6;
+        canJump = true;
+      }
+    }
+
+    // Animation
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      const time = performance.now();
+      const delta = (time - prevTime) / 1000;
+      
+      // Mettre à jour les manettes
+      updateGamepads();
+      
+      // Mettre à jour le mouvement
+      if (controls.isLocked) {
+        updateMovement(delta);
+      }
+      
+      // Rendu
+      renderer.render(scene, camera);
+      prevTime = time;
+    }
+
+    // Redimensionnement
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Démarrer
+    init();
+    animate();
+  </script>
 </body>
 </html>

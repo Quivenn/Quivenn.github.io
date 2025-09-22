@@ -203,8 +203,8 @@
           hand-controls="hand: left" 
           super-hands
           left-stick-move="speed:3"
-          sphere-collider="radius: 0.05"
-          hand-collider>
+          sphere-collider="radius: 0.1; objects: .pushable-object"
+          hand-pusher>
         </a-entity>
         
         <a-entity 
@@ -213,8 +213,8 @@
           super-hands
           right-stick-turn="turnSpeed:120; deadzone:0.08"
           gun-controller
-          sphere-collider="radius: 0.05"
-          hand-collider>
+          sphere-collider="radius: 0.1; objects: .pushable-object"
+          hand-pusher>
         </a-entity>
       </a-entity>
     </a-entity>
@@ -406,58 +406,54 @@
         }
       });
 
-      // Composant pour la collision des mains avec les objets
-      AFRAME.registerComponent('hand-collider', {
+      // Composant simplifié pour pousser les objets avec les mains
+      AFRAME.registerComponent('hand-pusher', {
         init() {
-          this.collisions = new Set();
-          this.impulseStrength = 5;
+          this.collidingObjects = new Set();
+          this.pushForce = 10;
           
-          // Écouter les collisions
-          this.el.addEventListener('collision', (e) => {
-            const otherEl = e.detail.body.el;
-            if (otherEl && otherEl.classList.contains('pushable-object')) {
-              this.collisions.add(otherEl);
-              this.applyHandForce(otherEl);
+          this.el.addEventListener('hit', (e) => {
+            const targetEl = e.detail.el;
+            if (targetEl && targetEl.classList.contains('pushable-object')) {
+              this.collidingObjects.add(targetEl);
             }
           });
           
-          this.el.addEventListener('collisionended', (e) => {
-            const otherEl = e.detail.body.el;
-            if (otherEl) {
-              this.collisions.delete(otherEl);
+          this.el.addEventListener('hitend', (e) => {
+            const targetEl = e.detail.el;
+            if (targetEl) {
+              this.collidingObjects.delete(targetEl);
             }
           });
         },
         
         tick() {
-          // Appliquer une force continue aux objets en collision
-          this.collisions.forEach(obj => {
-            this.applyHandForce(obj);
+          if (this.collidingObjects.size === 0) return;
+          
+          const handPos = this.el.object3D.position;
+          const handWorldPos = new THREE.Vector3();
+          this.el.object3D.getWorldPosition(handWorldPos);
+          
+          this.collidingObjects.forEach(obj => {
+            if (!obj.body) return;
+            
+            const objPos = obj.object3D.position;
+            const objWorldPos = new THREE.Vector3();
+            obj.object3D.getWorldPosition(objWorldPos);
+            
+            // Calculer la direction de la force
+            const forceDirection = new THREE.Vector3();
+            forceDirection.subVectors(objWorldPos, handWorldPos).normalize();
+            
+            // Appliquer la force
+            const force = new CANNON.Vec3(
+              forceDirection.x * this.pushForce,
+              forceDirection.y * this.pushForce,
+              forceDirection.z * this.pushForce
+            );
+            
+            obj.body.applyForce(force, obj.body.position);
           });
-        },
-        
-        applyHandForce(targetEl) {
-          if (!targetEl.body) return;
-          
-          const handPosition = new CANNON.Vec3();
-          handPosition.copy(this.el.object3D.position);
-          
-          const targetPosition = new CANNON.Vec3();
-          targetPosition.copy(targetEl.object3D.position);
-          
-          // Direction de la force (de la main vers l'objet)
-          const forceDirection = new CANNON.Vec3();
-          forceDirection.vsub(targetPosition, handPosition);
-          forceDirection.normalize();
-          
-          // Appliquer une force d'impulsion
-          const impulse = new CANNON.Vec3(
-            forceDirection.x * this.impulseStrength,
-            forceDirection.y * this.impulseStrength,
-            forceDirection.z * this.impulseStrength
-          );
-          
-          targetEl.body.applyImpulse(impulse, targetPosition);
         }
       });
 

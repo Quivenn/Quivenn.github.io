@@ -53,29 +53,14 @@
       pointer-events: none;
       max-width: 300px;
     }
-    .score {
-      position: fixed;
-      right: 12px;
-      top: 12px;
-      padding: 8px 12px;
-      background: rgba(0, 0, 0, 0.7);
-      color: #fff;
-      border-radius: 8px;
-      z-index: 1000;
-      pointer-events: none;
-      font-size: 18px;
-    }
   </style>
 </head>
 <body>
   <div class="hud">TP 4 WebVR - Exercices 1 à 4</div>
-  <div class="score">Cibles touchées: <span id="score">0</span></div>
   <div class="instructions">
     🎮 Gauche: déplacer — Droite: tourner<br>
     👊 Main: attraper les objets sur la table<br>
-    👋 Main: pousser les objets (collision physique)<br>
-    🔫 Gâchette: tirer<br>
-    🎯 Touchez les cibles pour marquer des points
+    👋 Main: pousser les objets (collision physique)
   </div>
 
   <a-scene
@@ -174,15 +159,6 @@
       touch-highlight>
     </a-cylinder>
 
-    <!-- Cibles (Exercice 4) -->
-    <a-entity id="targets"></a-entity>
-
-    <!-- Arme (Exercice 3) -->
-    <a-entity id="gun" position="0.2 -0.3 -0.5" rotation="0 0 0" scale="0.5 0.5 0.5">
-      <a-box position="0 0 0" width="0.1" height="0.1" depth="0.3" material="color: #333"></a-box>
-      <a-box position="0 0.05 0.15" width="0.1" height="0.2" depth="0.1" material="color: #555"></a-box>
-    </a-entity>
-
     <!-- Lumières (Exercice 1) -->
     <a-entity light="type:ambient;intensity:0.35;color:#fff"></a-entity>
     <a-entity 
@@ -196,56 +172,54 @@
     <a-sky color="#87CEEB"></a-sky>
 
     <!-- Rig + caméra + contrôleurs SIMPLIFIÉS -->
-<!-- Dans la section des contrôleurs - MODIFIER comme ceci -->
-<a-entity id="rig" position="0 1.6 0" rotation="0 0 0">
-  <a-entity id="pitch" rotation="0 0 0">
-    <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
-    
-    <!-- Contrôleurs VR -->
-          <a-entity 
-            id="left-hand" 
-            hand-controls="hand: left; handModelStyle: lowPoly; color: #ff0000"
-            super-hands="colliderEvent: collidestart; colliderEndEvent: collideend;"
-            sphere-collider="objects: .grabbable; radius: 0.05"
-            left-stick-move="speed:3"
-            event-set__grabstart="_event: gripdown; attribute: class; value: grabbing"
-            event-set__grabend="_event: gripup; attribute: class; value:">
-            <!-- Collider pour la main -->
-            <a-sphere 
-              class="collider" 
-              radius="0.05" 
-              visible="false" 
-              position="0 0 0">
-            </a-sphere>
-          </a-entity>
-          
-          <a-entity 
-            id="right-hand" 
-            hand-controls="hand: right; handModelStyle: lowPoly; color: #0000ff"
-            super-hands="colliderEvent: collidestart; colliderEndEvent: collideend;"
-            sphere-collider="objects: .grabbable; radius: 0.05"
-            right-stick-turn="turnSpeed:120; deadzone:0.08"
-            gun-controller
-            event-set__grabstart="_event: gripdown; attribute: class; value: grabbing"
-            event-set__grabend="_event: gripup; attribute: class; value:">
-            <!-- Collider pour la main -->
-            <a-sphere 
-              class="collider" 
-              radius="0.05" 
-              visible="false" 
-              position="0 0 0">
-            </a-sphere>
-          </a-entity> 
+    <a-entity id="rig" position="0 1.6 0" rotation="0 0 0">
+      <a-entity id="pitch" rotation="0 0 0">
+        <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
+        
+        <!-- Contrôleurs VR -->
+        <a-entity 
+          id="left-hand" 
+          hand-controls="hand: left; handModelStyle: lowPoly; color: #ff0000"
+          super-hands="colliderEvent: collidestart; colliderEndEvent: collideend;"
+          sphere-collider="objects: .grabbable; radius: 0.05"
+          left-stick-move="speed:3"
+          grab-handler
+          event-set__grabstart="_event: gripdown; attribute: class; value: grabbing"
+          event-set__grabend="_event: gripup; attribute: class; value:">
+          <!-- Collider pour la main -->
+          <a-sphere 
+            class="collider" 
+            radius="0.05" 
+            visible="false" 
+            position="0 0 0">
+          </a-sphere>
         </a-entity>
+        
+        <a-entity 
+          id="right-hand" 
+          hand-controls="hand: right; handModelStyle: lowPoly; color: #0000ff"
+          super-hands="colliderEvent: collidestart; colliderEndEvent: collideend;"
+          sphere-collider="objects: .grabbable; radius: 0.05"
+          right-stick-turn="turnSpeed:120; deadzone:0.08"
+          grab-handler
+          event-set__grabstart="_event: gripdown; attribute: class; value: grabbing"
+          event-set__grabend="_event: gripup; attribute: class; value:">
+          <!-- Collider pour la main -->
+          <a-sphere 
+            class="collider" 
+            radius="0.05" 
+            visible="false" 
+            position="0 0 0">
+          </a-sphere>
+        </a-entity> 
       </a-entity>
+    </a-entity>
+    
     <!-- WebXR -->
     <a-entity webxr="optionalFeatures: local-floor, bounded-floor"></a-entity>
 
     <!-- Scripts de composants personnalisés CORRIGÉS -->
     <script>
-  // Variables globales
-  let score = 0;
-  
   // Composant pour détecter le toucher et changer la couleur
   AFRAME.registerComponent('touch-highlight', {
     init: function () {
@@ -370,148 +344,21 @@
     }
   });
 
-  // Composant pour le contrôle de l'arme (Exercice 3)
-  AFRAME.registerComponent('gun-controller', {
-    init() {
-      this.gun = document.querySelector('#gun');
-      this.isGrabbing = false;
-      
-      // Détection des boutons pour le grab
-      this.el.addEventListener('buttondown', (e) => {
-        console.log('Bouton pressé:', e.detail.id, 'état:', e.detail);
-        
-        // Bouton grip (généralement id 1 ou 2)
-        if (e.detail.id === 1 || e.detail.id === 2) {
-          this.grabGun();
-        }
-        
-        // Gâchette (id 0)
-        if (e.detail.id === 0 && this.isGrabbing) {
-          this.shoot();
-        }
-      });
-      
-      this.el.addEventListener('buttonup', (e) => {
-        // Relâcher le grip
-        if (e.detail.id === 1 || e.detail.id === 2) {
-          this.releaseGun();
-        }
-      });
-    },
-    
-    grabGun() {
-      if (!this.isGrabbing) {
-        this.isGrabbing = true;
-        this.gun.setAttribute('position', '0 0 0');
-        this.el.appendChild(this.gun);
-        console.log('Arme attrapée');
-      }
-    },
-    
-    releaseGun() {
-      if (this.isGrabbing) {
-        this.isGrabbing = false;
-        this.gun.setAttribute('position', '0.2 -0.3 -0.5');
-        document.querySelector('#rig').appendChild(this.gun);
-        console.log('Arme relâchée');
-      }
-    },
-    
-    shoot() {
-      const projectile = document.createElement('a-sphere');
-      projectile.setAttribute('radius', '0.05');
-      projectile.setAttribute('material', 'color: yellow');
-      projectile.setAttribute('dynamic-body', 'mass: 0.1; shape: sphere; linearDamping: 0.3');
-      
-      const gunWorldPos = new THREE.Vector3();
-      this.gun.object3D.getWorldPosition(gunWorldPos);
-      projectile.setAttribute('position', gunWorldPos);
-      
-      const direction = new THREE.Vector3(0, 0, -1);
-      this.gun.object3D.localToWorld(direction);
-      direction.sub(gunWorldPos).normalize().multiplyScalar(30);
-      
-      projectile.setAttribute('velocity', direction);
-      
-      this.el.sceneEl.appendChild(projectile);
-      
-      setTimeout(() => {
-        if (projectile.parentNode) {
-          projectile.parentNode.removeChild(projectile);
-        }
-      }, 3000);
-      
-      projectile.addEventListener('collide', (e) => {
-        if (e.detail.body.el.id && e.detail.body.el.id.includes('target')) {
-          score++;
-          document.getElementById('score').textContent = score;
-          
-          e.detail.body.el.setAttribute('material', 'color: #FFFF00');
-          
-          setTimeout(() => {
-            if (e.detail.body.el.parentNode) {
-              e.detail.body.el.parentNode.removeChild(e.detail.body.el);
-            }
-          }, 200);
-        }
-      });
-    }
-  });
-
-  // Système de génération de cibles (Exercice 4)
-  AFRAME.registerComponent('target-generator', {
-    init() {
-      this.lastTargetTime = 0;
-      this.targetInterval = 2000;
-    },
-    tick(time) {
-      if (time - this.lastTargetTime > this.targetInterval) {
-        this.createTarget();
-        this.lastTargetTime = time;
-      }
-    },
-    createTarget() {
-      const targetsContainer = document.querySelector('#targets');
-      if (targetsContainer.children.length >= 8) return;
-      
-      const target = document.createElement('a-cylinder');
-      const id = 'target-' + Date.now();
-      target.setAttribute('id', id);
-      target.setAttribute('radius', '0.3');
-      target.setAttribute('height', '0.05');
-      target.setAttribute('material', 'color: #FF0000');
-      target.setAttribute('position', {
-        x: (Math.random() * 15) - 7.5,
-        y: 1.5,
-        z: (Math.random() * 15) - 7.5
-      });
-      target.setAttribute('static-body', 'shape: cylinder; cylinderRadius: 0.3; cylinderHeight: 0.05');
-      target.setAttribute('shadow', 'cast:true;receive:true');
-      
-      targetsContainer.appendChild(target);
-    }
-  });
-
-  // Configuration super-hands simplifiée
+  // Composant pour le grab simplifié et fonctionnel
   AFRAME.registerComponent('grab-handler', {
     init() {
       this.grabbedObject = null;
+      this.originalParent = null;
+      this.originalPosition = null;
+      this.originalRotation = null;
       
       // Écouter les événements de bouton
-      this.el.addEventListener('buttondown', (e) => {
-        console.log('Bouton pressé sur main:', e.detail.id);
-        
-        // Grip button (généralement id 1 ou 2)
-        if (e.detail.id === 1 || e.detail.id === 2) {
-          this.tryGrab();
-        }
+      this.el.addEventListener('gripdown', () => {
+        this.tryGrab();
       });
       
-      this.el.addEventListener('buttonup', (e) => {
-        // Relâcher le grip
-        if (e.detail.id === 1 || e.detail.id === 2) {
-          this.release();
-        }
+      this.el.addEventListener('gripup', () => {
+        this.release();
       });
     },
     
@@ -521,7 +368,7 @@
       // Trouver l'objet le plus proche
       const objects = document.querySelectorAll('.grabbable');
       let closestObject = null;
-      let closestDistance = 0.3; // Distance maximale
+      let closestDistance = 0.5; // Distance maximale
       
       const handPos = new THREE.Vector3();
       this.el.object3D.getWorldPosition(handPos);
@@ -544,10 +391,19 @@
     
     grabObject(obj) {
       this.grabbedObject = obj;
+      this.originalParent = obj.parentNode;
+      this.originalPosition = obj.getAttribute('position');
+      this.originalRotation = obj.getAttribute('rotation');
+      
+      // Sauvegarder la physique
+      this.originalDynamicBody = obj.getAttribute('dynamic-body');
       
       // Désactiver la physique temporairement
       obj.removeAttribute('dynamic-body');
-      obj.setAttribute('position', '0 0 0');
+      
+      // Attacher l'objet à la main
+      obj.setAttribute('position', {x: 0, y: 0, z: 0});
+      obj.setAttribute('rotation', {x: 0, y: 0, z: 0});
       this.el.appendChild(obj);
       
       console.log('Objet attrapé:', obj.id);
@@ -559,31 +415,37 @@
         
         // Remettre l'objet dans la scène
         this.el.removeChild(obj);
-        document.querySelector('a-scene').appendChild(obj);
+        this.originalParent.appendChild(obj);
+        
+        // Restaurer la position et rotation originales
+        const handWorldPos = new THREE.Vector3();
+        const handWorldRot = new THREE.Quaternion();
+        this.el.object3D.getWorldPosition(handWorldPos);
+        this.el.object3D.getWorldQuaternion(handWorldRot);
+        
+        // Positionner l'objet à la position de la main
+        obj.setAttribute('position', handWorldPos);
         
         // Réactiver la physique
-        obj.setAttribute('dynamic-body', 'mass: 1; shape: box; linearDamping: 0.5; angularDamping: 0.5');
-        
-        // Donner une petite vitesse basée sur le mouvement de la main
-        const velocity = new THREE.Vector3();
-        // Ici vous pourriez calculer la vitesse basée sur le mouvement de la main
+        if (this.originalDynamicBody) {
+          obj.setAttribute('dynamic-body', this.originalDynamicBody);
+        }
         
         console.log('Objet relâché:', obj.id);
+        
+        // Réinitialiser les variables
         this.grabbedObject = null;
+        this.originalParent = null;
+        this.originalPosition = null;
+        this.originalRotation = null;
+        this.originalDynamicBody = null;
       }
     }
   });
 
   // Initialisation
   document.querySelector('a-scene').addEventListener('loaded', () => {
-    document.querySelector('a-scene').setAttribute('target-generator', '');
-    
-    // Ajouter le grab handler aux mains
-    document.querySelector('#left-hand').setAttribute('grab-handler', '');
-    document.querySelector('#right-hand').setAttribute('grab-handler', '');
-    
-    console.log('Scène VR chargée. Utilisez les boutons grip (généralement majeur/annulaire) pour attraper les objets.');
-    console.log('Les boutons sont généralement: 0=gâchette, 1=grip, 2=autres boutons');
+    console.log('Scène VR chargée. Utilisez les boutons grip pour attraper les objets.');
   });
 </script>
   </a-scene>

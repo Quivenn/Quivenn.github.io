@@ -201,7 +201,7 @@
         <a-entity 
           id="left-hand" 
           hand-controls="hand: left" 
-          super-hands="grabStartButtons: trigger; grabEndButtons: trigger"
+          super-hands="grabStartButtons: trigger, grip; grabEndButtons: trigger, grip"
           sphere-collider="objects: .pushable-object"
           left-stick-move="speed:3"
           hand-pusher="pushForce: 2">
@@ -210,7 +210,7 @@
         <a-entity 
           id="right-hand" 
           hand-controls="hand: right" 
-          super-hands="grabStartButtons: trigger; grabEndButtons: trigger"
+          super-hands="grabStartButtons: trigger, grip; grabEndButtons: trigger, grip"
           sphere-collider="objects: .pushable-object"
           right-stick-turn="turnSpeed:120; deadzone:0.08"
           gun-controller

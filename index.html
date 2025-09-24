@@ -143,7 +143,7 @@
       position="-0.5 3.10 -2.5" 
       depth="0.3" height="0.3" width="0.3"
       material="color:#c94f4f;roughness:0.8;metalness:0.2"
-      dynamic-body="mass: 1; shape: box"
+      dynamic-body="mass: 1; shape: box; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
       grabbable
       class="pushable-object">
@@ -154,7 +154,7 @@
       position="0.5 3.10 -2.5" 
       radius="0.15"
       material="color:#4f79c9;roughness:0.6;metalness:0.2"
-      dynamic-body="mass: 1; shape: sphere"
+      dynamic-body="mass: 1; shape: sphere; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
       grabbable
       class="pushable-object">
@@ -165,7 +165,7 @@
       position="0 3.10 -3" 
       radius="0.15" height="0.3"
       material="color:#4fc94f;roughness:0.7;metalness:0.2"
-      dynamic-body="mass: 1; shape: cylinder"
+      dynamic-body="mass: 1; shape: cylinder; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
       grabbable
       class="pushable-object">
@@ -197,24 +197,24 @@
       <a-entity id="pitch" rotation="0 0 0">
         <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
         
-        <!-- Contrôleurs VR avec collision -->
+        <!-- Contrôleurs VR avec collision - CORRIGÉ -->
         <a-entity 
           id="left-hand" 
           hand-controls="hand: left" 
-          super-hands
+          super-hands="grabStartButtons: trigger; grabEndButtons: trigger"
+          sphere-collider="objects: .pushable-object"
           left-stick-move="speed:3"
-          sphere-collider="radius: 0.1; objects: .pushable-object"
-          hand-pusher>
+          hand-pusher="pushForce: 2">
         </a-entity>
         
         <a-entity 
           id="right-hand" 
           hand-controls="hand: right" 
-          super-hands
+          super-hands="grabStartButtons: trigger; grabEndButtons: trigger"
+          sphere-collider="objects: .pushable-object"
           right-stick-turn="turnSpeed:120; deadzone:0.08"
           gun-controller
-          sphere-collider="radius: 0.1; objects: .pushable-object"
-          hand-pusher>
+          hand-pusher="pushForce: 2">
         </a-entity>
       </a-entity>
     </a-entity>
@@ -222,12 +222,10 @@
     <!-- WebXR -->
     <a-entity webxr="optionalFeatures: local-floor, bounded-floor"></a-entity>
 
-    <!-- Scripts de composants personnalisés -->
+    <!-- Scripts de composants personnalisés CORRIGÉS -->
     <script>
       // Variables globales
       let score = 0;
-      let lastTargetTime = 0;
-      const targetInterval = 2000; // 2 secondes entre chaque cible
       
       // Composant pour le mouvement avec le joystick gauche
       AFRAME.registerComponent('left-stick-move', {
@@ -361,7 +359,7 @@
           const projectile = document.createElement('a-sphere');
           projectile.setAttribute('radius', '0.05');
           projectile.setAttribute('material', 'color: yellow');
-          projectile.setAttribute('dynamic-body', 'mass: 0.1; shape: sphere');
+          projectile.setAttribute('dynamic-body', 'mass: 0.1; shape: sphere; linearDamping: 0.3');
           
           // Positionner le projectile au bout du canon
           const gunWorldPos = new THREE.Vector3();
@@ -371,7 +369,7 @@
           // Appliquer une force pour simuler le tir
           const direction = new THREE.Vector3(0, 0, -1);
           this.gun.object3D.localToWorld(direction);
-          direction.sub(gunWorldPos).normalize().multiplyScalar(50);
+          direction.sub(gunWorldPos).normalize().multiplyScalar(30); // Réduit la force
           
           projectile.setAttribute('velocity', direction);
           
@@ -406,11 +404,16 @@
         }
       });
 
-      // Composant simplifié pour pousser les objets avec les mains
+      // Composant CORRIGÉ pour pousser les objets avec les mains
       AFRAME.registerComponent('hand-pusher', {
+        schema: {
+          pushForce: {type: 'number', default: 2} // Force réduite
+        },
+        
         init() {
           this.collidingObjects = new Set();
-          this.pushForce = 10;
+          this.lastPushTime = 0;
+          this.pushInterval = 100; // ms entre les poussées
           
           this.el.addEventListener('hit', (e) => {
             const targetEl = e.detail.el;
@@ -427,29 +430,29 @@
           });
         },
         
-        tick() {
-          if (this.collidingObjects.size === 0) return;
+        tick(time) {
+          if (this.collidingObjects.size === 0 || time - this.lastPushTime < this.pushInterval) return;
           
-          const handPos = this.el.object3D.position;
+          this.lastPushTime = time;
+          
           const handWorldPos = new THREE.Vector3();
           this.el.object3D.getWorldPosition(handWorldPos);
           
           this.collidingObjects.forEach(obj => {
             if (!obj.body) return;
             
-            const objPos = obj.object3D.position;
             const objWorldPos = new THREE.Vector3();
             obj.object3D.getWorldPosition(objWorldPos);
             
-            // Calculer la direction de la force
+            // Calculer la direction de la force (de la main vers l'objet)
             const forceDirection = new THREE.Vector3();
             forceDirection.subVectors(objWorldPos, handWorldPos).normalize();
             
-            // Appliquer la force
+            // Appliquer une force beaucoup plus douce
             const force = new CANNON.Vec3(
-              forceDirection.x * this.pushForce,
-              forceDirection.y * this.pushForce,
-              forceDirection.z * this.pushForce
+              forceDirection.x * this.data.pushForce,
+              forceDirection.y * this.data.pushForce + 0.5, // Légère poussée vers le haut
+              forceDirection.z * this.data.pushForce
             );
             
             obj.body.applyForce(force, obj.body.position);
@@ -478,7 +481,7 @@
           target.setAttribute('id', id);
           target.setAttribute('radius', '0.3');
           target.setAttribute('height', '0.05');
-          target.setAttribute('color', '#FF0000');
+          target.setAttribute('material', 'color: #FF0000');
           target.setAttribute('position', {
             x: (Math.random() * 15) - 7.5,
             y: 1.5,
@@ -496,12 +499,8 @@
         // Ajouter le composant de génération de cibles à la scène
         document.querySelector('a-scene').setAttribute('target-generator', '');
         
-        // Configurer super-hands pour l'interaction
-        AFRAME.components['super-hands'].schema.grabStartButtons.default = [0, 1, 2];
-        AFRAME.components['super-hands'].schema.grabEndButtons.default = [0, 1, 2];
-        
         console.log('Scène VR chargée. Les objets sont sur la table devant vous.');
-        console.log('Vous pouvez maintenant pousser les objets avec vos mains!');
+        console.log('Vous pouvez maintenant attraper et pousser les objets avec vos mains!');
       });
     </script>
   </a-scene>

@@ -123,8 +123,10 @@
         <a-entity id="left-hand"
           hand-controls="hand: left; handModelStyle: lowPoly"
           super-hands="grabStartButtons: trigger; grabEndButtons: trigger"
-          sphere-collider="objects: .interactable; radius:0.06">
+          sphere-collider="objects: .interactable; radius:0.06"
+          left-stick-move>
         </a-entity>
+
 
         <!-- Main droite -->
         <a-entity id="right-hand"
@@ -236,6 +238,44 @@
       document.querySelector('a-scene').addEventListener('loaded', ()=>{
         document.querySelector('a-scene').setAttribute('target-generator','');
       });
+
+            // Déplacement avec stick gauche
+      AFRAME.registerComponent('left-stick-move', {
+        schema: { speed: {type:'number', default:3}, deadzone:{type:'number', default:0.05} },
+        init() {
+          this.axis = {x:0,y:0};
+          this.rig  = document.querySelector('#rig');
+          this.cam  = document.querySelector('#head');
+          this.el.addEventListener('axismove', e => { 
+            this.axis = this.readStickAxes(e.detail.axis); 
+          });
+        },
+        readStickAxes(axis){
+          const ax = axis || [];
+          let x = ax[0] ?? 0, y = ax[1] ?? 0;
+          if (Math.abs(x) < 0.001 && Math.abs(y) < 0.001 && ax.length >= 4) {
+            x = ax[2] ?? 0; 
+            y = ax[3] ?? 0;
+          }
+          return {x, y};
+        },
+        tick(t,dt){
+          if(!this.rig || !this.cam) return;
+          const s = this.data.speed * (dt/1000);
+          let {x,y} = this.axis;
+          if (Math.hypot(x,y) < this.data.deadzone) return;
+
+          const yaw = (this.rig.getAttribute('rotation')?.y || 0) + (this.cam.getAttribute('rotation')?.y || 0);
+          const rad = THREE.MathUtils.degToRad(yaw);
+          const forward = new THREE.Vector3(-Math.sin(rad), 0, -Math.cos(rad));
+          const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).negate();
+
+          this.rig.object3D.position
+            .addScaledVector(forward, -y*s)
+            .addScaledVector(right, -x*s);
+        }
+      });
+
     </script>
   </a-scene>
 </body>

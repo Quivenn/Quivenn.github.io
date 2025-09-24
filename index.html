@@ -197,20 +197,25 @@
       <a-entity id="pitch" rotation="0 0 0">
         <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
         
-        <!-- Contrôleurs VR  -->
+        <!-- Contrôleurs VR avec collision - CORRIGÉ -->
         <a-entity 
           id="left-hand" 
           hand-controls="hand: left" 
-          super-hands="grabStartButtons: trigger; grabEndButtons: trigger">
+          super-hands="grabStartButtons: trigger; grabEndButtons: trigger"
+          sphere-collider="objects: .pushable-object"
+          left-stick-move="speed:3"
+          hand-pusher="pushForce: 2">
         </a-entity>
-
+        
         <a-entity 
           id="right-hand" 
           hand-controls="hand: right" 
           super-hands="grabStartButtons: trigger; grabEndButtons: trigger"
-          gun-controller>
+          sphere-collider="objects: .pushable-object"
+          right-stick-turn="turnSpeed:120; deadzone:0.08"
+          gun-controller
+          hand-pusher="pushForce: 2">
         </a-entity>
-
       </a-entity>
     </a-entity>
 

@@ -430,22 +430,15 @@ AFRAME.registerComponent('gun-shoot', {
       y: gunWorldPos.y + gunWorldDir.y * 0.5,
       z: gunWorldPos.z + gunWorldDir.z * 0.5
     });
-    bullet.setAttribute('dynamic-body', {
-      mass: 0.1,
-      shape: 'sphere',
-      linearDamping: 0.01,  // Réduit le frottement
-      angularDamping: 0.01,
-      gravity: {x: 0, y: 0, z: 0}  // Désactive la gravité pour la balle
-    });
-    
+    bullet.setAttribute('dynamic-body', 'mass:0.1; shape:sphere; linearDamping:0; angularDamping:0;');
     scene.appendChild(bullet);
 
     // Appliquer une vitesse initiale après que le body est prêt
     bullet.addEventListener('body-loaded', () => {
       const velocity = new CANNON.Vec3(
-        gunWorldDir.x * 50,   // Augmenté à 50 pour plus de vitesse
-        gunWorldDir.y * 50,
-        gunWorldDir.z * 50
+        gunWorldDir.x * 20,   // multiplier par 20 pour une bonne vitesse
+        gunWorldDir.y * 20,
+        gunWorldDir.z * 20
       );
       bullet.body.velocity.copy(velocity);
     });
@@ -456,6 +449,7 @@ AFRAME.registerComponent('gun-shoot', {
     }, 3000);
   }
 });
+
 </script>
   </a-scene>
 </body>

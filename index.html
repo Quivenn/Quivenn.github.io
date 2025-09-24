@@ -172,6 +172,10 @@
     gun-shoot>
   </a-box>
 
+  <!-- Targets-->
+  <a-entity red-sphere-spawn-on-button="area: 40 3 40"></a-entity>
+
+
 
     <!-- Lumières (Exercice 1) -->
     <a-entity light="type:ambient;intensity:0.35;color:#fff"></a-entity>
@@ -228,6 +232,7 @@
         </a-entity> 
       </a-entity>
     </a-entity>
+
     
     <!-- WebXR -->
     <a-entity webxr="optionalFeatures: local-floor, bounded-floor"></a-entity>
@@ -463,6 +468,36 @@ AFRAME.registerComponent('gun-shoot', {
     setTimeout(() => {
       if (bullet.parentNode) bullet.parentNode.removeChild(bullet);
     }, 3000);
+  }
+});
+
+// Composant pour spawn UNE sphère rouge à une position aléatoire
+AFRAME.registerComponent('red-sphere-spawn-on-button', {
+  schema: {
+    area:  { type: 'vec3', default: {x: 40, y: 3, z: 40} } // zone de spawn
+  },
+  init: function () {
+    const scene = this.el.sceneEl;
+
+    // Fonction de création
+    const spawnSphere = () => {
+      const sphere = document.createElement('a-sphere');
+
+      const x = (Math.random() - 0.5) * this.data.area.x;
+      const y = Math.random() * this.data.area.y; 
+      const z = (Math.random() - 0.5) * this.data.area.z;
+
+      sphere.setAttribute('position', { x, y, z });
+      sphere.setAttribute('radius', 0.15);
+      sphere.setAttribute('color', '#ff0000');
+      sphere.setAttribute('material', 'roughness:0.6;metalness:0.2');
+
+      scene.appendChild(sphere);
+    };
+
+    // Écoute des boutons B et Y
+    window.addEventListener('bbuttondown', spawnSphere);
+    window.addEventListener('ybuttondown', spawnSphere);
   }
 });
 

@@ -234,6 +234,20 @@
       let score = 0;
       
       // Composant pour le mouvement avec le joystick gauche
+
+      // Composant collision-filter nécessaire pour super-hands
+      AFRAME.registerComponent('collision-filter', {
+        dependencies: ['super-hands'],
+        init: function () {
+          this.el.addEventListener('grab-start', (e) => {
+            console.log('Grab start:', e.detail);
+          });
+          this.el.addEventListener('grab-end', (e) => {
+            console.log('Grab end:', e.detail);
+          });
+        }
+      });
+
       AFRAME.registerComponent('left-stick-move', {
         schema: { 
           speed: {type:'number', default:3}, 

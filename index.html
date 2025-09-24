@@ -145,8 +145,9 @@
       material="color:#c94f4f;roughness:0.8;metalness:0.2"
       dynamic-body="mass: 1; shape: box; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
+      class="pushable-object grabbable"
       grabbable
-      class="pushable-object">
+      touch-highlight>
     </a-box>
     
     <a-sphere 
@@ -156,8 +157,9 @@
       material="color:#4f79c9;roughness:0.6;metalness:0.2"
       dynamic-body="mass: 1; shape: sphere; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
+      class="pushable-object grabbable"
       grabbable
-      class="pushable-object">
+      touch-highlight>
     </a-sphere>
     
     <a-cylinder 
@@ -167,8 +169,9 @@
       material="color:#4fc94f;roughness:0.7;metalness:0.2"
       dynamic-body="mass: 1; shape: cylinder; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
+      class="pushable-object grabbable"
       grabbable
-      class="pushable-object">
+      touch-highlight>
     </a-cylinder>
 
     <!-- Cibles (Exercice 4) -->
@@ -192,37 +195,28 @@
     <!-- Ciel -->
     <a-sky color="#87CEEB"></a-sky>
 
-    <!-- Rig + caméra + contrôleurs -->
+    <!-- Rig + caméra + contrôleurs SIMPLIFIÉS -->
     <a-entity id="rig" position="0 1.6 0" rotation="0 0 0">
       <a-entity id="pitch" rotation="0 0 0">
         <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
         
-        <!-- Contrôleurs VR avec collision - CORRIGÉ -->
-        <!-- Contrôleurs VR avec configuration corrigée -->
+        <!-- Contrôleurs VR simplifiés - SANS COLLISIONS -->
         <a-entity 
           id="left-hand" 
           hand-controls="hand: left; handModelStyle: lowPoly; color: #ff0000"
-          super-hands="colliderEvent: collision; colliderEventProperty: els; 
-                      colliderEndEvent: collision; colliderEndEventProperty: els;
-                      grabStartButtons: trigger, grip; grabEndButtons: trigger, grip"
-          sphere-collider="objects: .pushable-object; radius: 0.1"
-          collision-filter="collideFor: grab"
+          super-hands="grabStartButtons: trigger, grip; grabEndButtons: trigger, grip"
           left-stick-move="speed:3"
-          hand-pusher="pushForce: 2">
+          hand-touch-detector="hand: left">
         </a-entity>
-
+        
         <a-entity 
           id="right-hand" 
           hand-controls="hand: right; handModelStyle: lowPoly; color: #0000ff"
-          super-hands="colliderEvent: collision; colliderEventProperty: els; 
-                      colliderEndEvent: collision; colliderEndEventProperty: els;
-                      grabStartButtons: trigger, grip; grabEndButtons: trigger, grip"
-          sphere-collider="objects: .pushable-object; radius: 0.1"
-          collision-filter="collideFor: grab"
+          super-hands="grabStartButtons: trigger, grip; grabEndButtons: trigger, grip"
           right-stick-turn="turnSpeed:120; deadzone:0.08"
           gun-controller
-          hand-pusher="pushForce: 2">
-        </a-entity>
+          hand-touch-detector="hand: right">
+        </a-entity> 
       </a-entity>
     </a-entity>
 
@@ -234,6 +228,107 @@
       // Variables globales
       let score = 0;
       
+      // Composant pour détecter le toucher et changer la couleur
+      AFRAME.registerComponent('touch-highlight', {
+        init: function () {
+          this.originalColor = this.el.getAttribute('material').color;
+          this.isTouched = false;
+          
+          this.el.addEventListener('mouseenter', () => {
+            this.highlight();
+          });
+          
+          this.el.addEventListener('mouseleave', () => {
+            this.unhighlight();
+          });
+        },
+        
+        highlight: function () {
+          if (!this.isTouched) {
+            this.isTouched = true;
+            this.el.setAttribute('material', 'color', '#FFFF00'); // Jaune quand touché
+            console.log('Objet touché:', this.el.id);
+            
+            // Retour à la couleur originale après 1 seconde
+            setTimeout(() => {
+              this.unhighlight();
+            }, 1000);
+          }
+        },
+        
+        unhighlight: function () {
+          this.isTouched = false;
+          this.el.setAttribute('material', 'color', this.originalColor);
+        }
+      });
+      
+      // Composant pour détecter la proximité des mains avec les objets
+      AFRAME.registerComponent('hand-touch-detector', {
+        schema: {
+          hand: {type: 'string', default: 'left'},
+          detectionDistance: {type: 'number', default: 0.3}
+        },
+        
+        init: function () {
+          this.handPosition = new THREE.Vector3();
+          this.objPosition = new THREE.Vector3();
+          this.touchedObjects = new Set();
+          
+          console.log('Détecteur de toucher activé pour la main:', this.data.hand);
+        },
+        
+        tick: function () {
+          // Obtenir la position mondiale de la main
+          this.el.object3D.getWorldPosition(this.handPosition);
+          
+          // Vérifier la proximité avec tous les objets grabbables
+          const objects = document.querySelectorAll('.grabbable');
+          
+          objects.forEach(obj => {
+            obj.object3D.getWorldPosition(this.objPosition);
+            const distance = this.handPosition.distanceTo(this.objPosition);
+            
+            if (distance < this.data.detectionDistance) {
+              if (!this.touchedObjects.has(obj)) {
+                // Premier contact avec cet objet
+                this.touchedObjects.add(obj);
+                this.triggerTouch(obj);
+              }
+            } else {
+              if (this.touchedObjects.has(obj)) {
+                // Plus de contact avec cet objet
+                this.touchedObjects.delete(obj);
+              }
+            }
+          });
+        },
+        
+        triggerTouch: function (obj) {
+          // Déclencher l'événement de toucher sur l'objet
+          obj.emit('mouseenter');
+          console.log(`Main ${this.data.hand} touche l'objet:`, obj.id);
+          
+          // Ajouter un effet visuel temporaire
+          const originalScale = obj.getAttribute('scale') || {x: 1, y: 1, z: 1};
+          obj.setAttribute('animation', {
+            property: 'scale',
+            to: `${originalScale.x * 1.2} ${originalScale.y * 1.2} ${originalScale.z * 1.2}`,
+            dur: 200,
+            easing: 'easeOutElastic'
+          });
+          
+          // Restaurer après un moment
+          setTimeout(() => {
+            obj.setAttribute('animation', {
+              property: 'scale',
+              to: `${originalScale.x} ${originalScale.y} ${originalScale.z}`,
+              dur: 200,
+              easing: 'easeOutElastic'
+            });
+          }, 500);
+        }
+      });
+
       // Composant pour le mouvement avec le joystick gauche
       AFRAME.registerComponent('left-stick-move', {
         schema: { 
@@ -340,6 +435,7 @@
             this.isGrabbing = true;
             this.gun.setAttribute('position', '0 0 0');
             this.el.appendChild(this.gun);
+            console.log('Arme attrapée');
           });
           
           this.el.addEventListener('grab-end', () => {
@@ -347,6 +443,7 @@
             // Remettre l'arme à sa position initiale
             this.gun.setAttribute('position', '0.2 -0.3 -0.5');
             document.querySelector('#rig').appendChild(this.gun);
+            console.log('Arme relâchée');
           });
           
           // Détection de la gâchette
@@ -411,62 +508,6 @@
         }
       });
 
-      // Composant CORRIGÉ pour pousser les objets avec les mains
-      AFRAME.registerComponent('hand-pusher', {
-        schema: {
-          pushForce: {type: 'number', default: 2} // Force réduite
-        },
-        
-        init() {
-          this.collidingObjects = new Set();
-          this.lastPushTime = 0;
-          this.pushInterval = 100; // ms entre les poussées
-          
-          this.el.addEventListener('hit', (e) => {
-            const targetEl = e.detail.el;
-            if (targetEl && targetEl.classList.contains('pushable-object')) {
-              this.collidingObjects.add(targetEl);
-            }
-          });
-          
-          this.el.addEventListener('hitend', (e) => {
-            const targetEl = e.detail.el;
-            if (targetEl) {
-              this.collidingObjects.delete(targetEl);
-            }
-          });
-        },
-        
-        tick(time) {
-          if (this.collidingObjects.size === 0 || time - this.lastPushTime < this.pushInterval) return;
-          
-          this.lastPushTime = time;
-          
-          const handWorldPos = new THREE.Vector3();
-          this.el.object3D.getWorldPosition(handWorldPos);
-          
-          this.collidingObjects.forEach(obj => {
-            if (!obj.body) return;
-            
-            const objWorldPos = new THREE.Vector3();
-            obj.object3D.getWorldPosition(objWorldPos);
-            
-            // Calculer la direction de la force (de la main vers l'objet)
-            const forceDirection = new THREE.Vector3();
-            forceDirection.subVectors(objWorldPos, handWorldPos).normalize();
-            
-            // Appliquer une force beaucoup plus douce
-            const force = new CANNON.Vec3(
-              forceDirection.x * this.data.pushForce,
-              forceDirection.y * this.data.pushForce + 0.5, // Légère poussée vers le haut
-              forceDirection.z * this.data.pushForce
-            );
-            
-            obj.body.applyForce(force, obj.body.position);
-          });
-        }
-      });
-
       // Système de génération de cibles (Exercice 4)
       AFRAME.registerComponent('target-generator', {
         init() {
@@ -507,42 +548,7 @@
         document.querySelector('a-scene').setAttribute('target-generator', '');
         
         console.log('Scène VR chargée. Les objets sont sur la table devant vous.');
-        console.log('Vous pouvez maintenant attraper et pousser les objets avec vos mains!');
-      });
-
-
-            // Script de débogage pour le grab
-      AFRAME.registerComponent('grab-debug', {
-        init: function () {
-          const hand = this.el;
-          
-          // Écouter les événements de collision
-          hand.addEventListener('collision', (e) => {
-            console.log('Collision avec:', e.detail.body.el);
-          });
-          
-          // Écouter les événements de bouton
-          hand.addEventListener('buttonchanged', (e) => {
-            console.log('Bouton:', e.detail.id, 'Pressé:', e.detail.state.pressed);
-          });
-          
-          // Écouter les événements super-hands
-          hand.addEventListener('grab-start', (e) => {
-            console.log('GRAB STARTED:', e.detail);
-          });
-          
-          hand.addEventListener('grab-end', (e) => {
-            console.log('GRAB ENDED:', e.detail);
-          });
-          
-          console.log('Debug grab activé pour', hand.id);
-        }
-      });
-
-      // Appliquer le debug aux mains
-      document.querySelector('a-scene').addEventListener('loaded', () => {
-        document.querySelector('#left-hand').setAttribute('grab-debug', '');
-        document.querySelector('#right-hand').setAttribute('grab-debug', '');
+        console.log('Approchez vos mains des objets pour voir s ils changent de couleur.');
       });
     </script>
   </a-scene>

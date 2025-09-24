@@ -159,6 +159,20 @@
       touch-highlight>
     </a-cylinder>
 
+    <!-- Gun  -->
+      <a-box 
+    id="gun"
+    position="1 1.55 -2.5"
+    depth="0.3" height="0.15" width="0.6"
+    material="color:gray;metalness:0.8;roughness:0.3"
+    dynamic-body="mass: 1; shape: box;"
+    shadow="cast:true;receive:true"
+    class="grabbable"
+    grabbable
+    gun-shoot>
+  </a-box>
+
+
     <!-- Lumières (Exercice 1) -->
     <a-entity light="type:ambient;intensity:0.35;color:#fff"></a-entity>
     <a-entity 
@@ -412,6 +426,56 @@
   }
 
   });
+
+  
+  AFRAME.registerComponent('gun-shoot', {
+    init: function () {
+      // Écouter l'événement quand on appuie sur la gâchette du contrôleur
+      this.el.addEventListener('triggerdown', () => {
+        this.shoot();
+      });
+    },
+
+    shoot: function () {
+      const scene = this.el.sceneEl;
+      const bullet = document.createElement('a-sphere');
+
+      // Positionner la balle au bout de l'arme
+      const gunWorldPos = new THREE.Vector3();
+      const gunWorldDir = new THREE.Vector3();
+      this.el.object3D.getWorldPosition(gunWorldPos);
+      this.el.object3D.getWorldDirection(gunWorldDir);
+
+      bullet.setAttribute('radius', 0.05);
+      bullet.setAttribute('color', 'yellow');
+      bullet.setAttribute('position', {
+        x: gunWorldPos.x + gunWorldDir.x * 0.5,
+        y: gunWorldPos.y + gunWorldDir.y * 0.5,
+        z: gunWorldPos.z + gunWorldDir.z * 0.5
+      });
+
+      bullet.setAttribute('dynamic-body', 'mass:0.1; shape:sphere;');
+
+      scene.appendChild(bullet);
+
+      // Donner une force initiale
+      const impulse = new CANNON.Vec3(
+        gunWorldDir.x * 10,
+        gunWorldDir.y * 10,
+        gunWorldDir.z * 10
+      );
+      const worldPoint = new CANNON.Vec3().copy(bullet.body.position);
+      bullet.body.applyImpulse(impulse, worldPoint);
+
+      // Supprimer la balle après 3 secondes pour éviter de surcharger la scène
+      setTimeout(() => {
+        if (bullet.parentNode) {
+          bullet.parentNode.removeChild(bullet);
+        }
+      }, 3000);
+    }
+  });
+
 
   // Initialisation
   document.querySelector('a-scene').addEventListener('loaded', () => {

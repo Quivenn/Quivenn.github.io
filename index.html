@@ -355,127 +355,97 @@
   });
 
   // Composant pour le grab simplifié et fonctionnel
-  AFRAME.registerComponent('grab-handler', {
-    init() {
-      this.grabbedObject = null;
-      this.originalParent = null;
-      this.originalPosition = null;
-      this.originalRotation = null;
-      
-      // Écouter les événements de bouton
-      this.el.addEventListener('gripdown', () => {
-        this.tryGrab();
-      });
-      
-      this.el.addEventListener('gripup', () => {
-        this.release();
-      });
-    },
-    
-    tryGrab() {
-      if (this.grabbedObject) return;
-      
-      // Trouver l'objet le plus proche
-      const objects = document.querySelectorAll('.grabbable');
-      let closestObject = null;
-      let closestDistance = 0.5; // Distance maximale
-      
-      const handPos = new THREE.Vector3();
-      this.el.object3D.getWorldPosition(handPos);
-      
-      objects.forEach(obj => {
-        const objPos = new THREE.Vector3();
-        obj.object3D.getWorldPosition(objPos);
-        const distance = handPos.distanceTo(objPos);
-        
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestObject = obj;
-        }
-      });
-      
-      if (closestObject) {
-        this.grabObject(closestObject);
+AFRAME.registerComponent('grab-handler', {
+  init() {
+    this.grabbedObject = null;
+
+    this.el.addEventListener('gripdown', () => this.tryGrab());
+    this.el.addEventListener('gripup', () => this.release());
+
+    // Relier trigger index au tir
+    this.el.addEventListener('triggerdown', () => {
+      if (this.grabbedObject && this.grabbedObject.components['gun-shoot']) {
+        this.grabbedObject.components['gun-shoot'].shoot();
       }
-    },
-    
+    });
+  },
+
+  tryGrab() {
+    if (this.grabbedObject) return;
+    const objects = document.querySelectorAll('.grabbable');
+    let closestObject = null;
+    let closestDistance = 0.5;
+
+    const handPos = new THREE.Vector3();
+    this.el.object3D.getWorldPosition(handPos);
+
+    objects.forEach(obj => {
+      const objPos = new THREE.Vector3();
+      obj.object3D.getWorldPosition(objPos);
+      const distance = handPos.distanceTo(objPos);
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestObject = obj;
+      }
+    });
+
+    if (closestObject) {
+      this.grabObject(closestObject);
+    }
+  },
+
   grabObject(obj) {
     this.grabbedObject = obj;
-
-    // Désactiver la physique
     obj.removeAttribute('dynamic-body');
-
-    // Attacher au modèle 3D de la main
     this.el.object3D.attach(obj.object3D);
-
     console.log('Objet attrapé:', obj.id);
   },
 
   release() {
-    if (this.grabbedObject) {
-      const obj = this.grabbedObject;
-
-      // Détacher et replacer dans la scène
-      this.el.sceneEl.object3D.attach(obj.object3D);
-
-      // Réactiver la physique
-      obj.setAttribute('dynamic-body', 'mass: 1; shape: auto;');
-
-      this.grabbedObject = null;
-    }
+    if (!this.grabbedObject) return;
+    const obj = this.grabbedObject;
+    this.el.sceneEl.object3D.attach(obj.object3D);
+    obj.setAttribute('dynamic-body', 'mass: 1; shape: auto;');
+    this.grabbedObject = null;
   }
+});
 
-  });
+// Composant arme
+AFRAME.registerComponent('gun-shoot', {
+  shoot: function () {
+    const scene = this.el.sceneEl;
+    const bullet = document.createElement('a-sphere');
 
-  
-  AFRAME.registerComponent('gun-shoot', {
-    init: function () {
-      // Écouter l'événement quand on appuie sur la gâchette du contrôleur
-      this.el.addEventListener('triggerdown', () => {
-        this.shoot();
-      });
-    },
+    const gunWorldPos = new THREE.Vector3();
+    const gunWorldDir = new THREE.Vector3();
+    this.el.object3D.getWorldPosition(gunWorldPos);
+    this.el.object3D.getWorldDirection(gunWorldDir);
 
-    shoot: function () {
-      const scene = this.el.sceneEl;
-      const bullet = document.createElement('a-sphere');
+    bullet.setAttribute('radius', 0.05);
+    bullet.setAttribute('color', 'yellow');
+    bullet.setAttribute('position', {
+      x: gunWorldPos.x + gunWorldDir.x * 0.5,
+      y: gunWorldPos.y + gunWorldDir.y * 0.5,
+      z: gunWorldPos.z + gunWorldDir.z * 0.5
+    });
+    bullet.setAttribute('dynamic-body', 'mass:0.1; shape:sphere;');
+    scene.appendChild(bullet);
 
-      // Positionner la balle au bout de l'arme
-      const gunWorldPos = new THREE.Vector3();
-      const gunWorldDir = new THREE.Vector3();
-      this.el.object3D.getWorldPosition(gunWorldPos);
-      this.el.object3D.getWorldDirection(gunWorldDir);
+    const impulse = new CANNON.Vec3(
+      gunWorldDir.x * 10,
+      gunWorldDir.y * 10,
+      gunWorldDir.z * 10
+    );
+    bullet.addEventListener('body-loaded', () => {
+      bullet.body.applyImpulse(impulse, bullet.body.position);
+    });
 
-      bullet.setAttribute('radius', 0.05);
-      bullet.setAttribute('color', 'yellow');
-      bullet.setAttribute('position', {
-        x: gunWorldPos.x + gunWorldDir.x * 0.5,
-        y: gunWorldPos.y + gunWorldDir.y * 0.5,
-        z: gunWorldPos.z + gunWorldDir.z * 0.5
-      });
-
-      bullet.setAttribute('dynamic-body', 'mass:0.1; shape:sphere;');
-
-      scene.appendChild(bullet);
-
-      // Donner une force initiale
-      const impulse = new CANNON.Vec3(
-        gunWorldDir.x * 10,
-        gunWorldDir.y * 10,
-        gunWorldDir.z * 10
-      );
-      const worldPoint = new CANNON.Vec3().copy(bullet.body.position);
-      bullet.body.applyImpulse(impulse, worldPoint);
-
-      // Supprimer la balle après 3 secondes pour éviter de surcharger la scène
-      setTimeout(() => {
-        if (bullet.parentNode) {
-          bullet.parentNode.removeChild(bullet);
-        }
-      }, 3000);
-    }
-  });
-
+    setTimeout(() => {
+      if (bullet.parentNode) bullet.parentNode.removeChild(bullet);
+    }, 3000);
+  }
+});
 
   // Initialisation
   document.querySelector('a-scene').addEventListener('loaded', () => {

@@ -53,6 +53,9 @@
       pointer-events: none;
       max-width: 300px;
     }
+    .held {
+      visibility: visible !important;
+    }
   </style>
 </head>
 <body>
@@ -130,9 +133,10 @@
       material="color:#c94f4f;roughness:0.8;metalness:0.2"
       dynamic-body="mass: 1; shape: box; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
-      class="pushable-object grabbable"
+      class="grabbable"
       grabbable
-      touch-highlight>
+      touch-highlight
+      mark-held>
     </a-box>
     
     <a-sphere 
@@ -142,9 +146,10 @@
       material="color:#4f79c9;roughness:0.6;metalness:0.2"
       dynamic-body="mass: 1; shape: sphere; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
-      class="pushable-object grabbable"
+      class="grabbable"
       grabbable
-      touch-highlight>
+      touch-highlight
+      mark-held>
     </a-sphere>
     
     <a-cylinder 
@@ -154,9 +159,10 @@
       material="color:#4fc94f;roughness:0.7;metalness:0.2"
       dynamic-body="mass: 1; shape: cylinder; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
-      class="pushable-object grabbable"
+      class="grabbable"
       grabbable
-      touch-highlight>
+      touch-highlight
+      mark-held>
     </a-cylinder>
 
     <!-- Lumières (Exercice 1) -->
@@ -171,7 +177,7 @@
     <!-- Ciel -->
     <a-sky color="#87CEEB"></a-sky>
 
-    <!-- Rig + caméra + contrôleurs SIMPLIFIÉS -->
+    <!-- Rig + caméra + contrôleurs -->
     <a-entity id="rig" position="0 1.6 0" rotation="0 0 0">
       <a-entity id="pitch" rotation="0 0 0">
         <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
@@ -183,7 +189,7 @@
           super-hands="colliderEvent: collidestart; colliderEndEvent: collideend;"
           sphere-collider="objects: .grabbable; radius: 0.05"
           left-stick-move="speed:3"
-          grab-handler
+          desktop-grab-keys
           event-set__grabstart="_event: gripdown; attribute: class; value: grabbing"
           event-set__grabend="_event: gripup; attribute: class; value:">
           <!-- Collider pour la main -->
@@ -201,7 +207,7 @@
           super-hands="colliderEvent: collidestart; colliderEndEvent: collideend;"
           sphere-collider="objects: .grabbable; radius: 0.05"
           right-stick-turn="turnSpeed:120; deadzone:0.08"
-          grab-handler
+          desktop-grab-keys
           event-set__grabstart="_event: gripdown; attribute: class; value: grabbing"
           event-set__grabend="_event: gripup; attribute: class; value:">
           <!-- Collider pour la main -->
@@ -218,7 +224,7 @@
     <!-- WebXR -->
     <a-entity webxr="optionalFeatures: local-floor, bounded-floor"></a-entity>
 
-    <!-- Scripts de composants personnalisés CORRIGÉS -->
+    <!-- Scripts de composants personnalisés -->
     <script>
   // Composant pour détecter le toucher et changer la couleur
   AFRAME.registerComponent('touch-highlight', {
@@ -344,20 +350,82 @@
     }
   });
 
-  // Composant pour le grab simplifié et fonctionnel
+  // Clavier: E pour grab (down) / drop (up) — utile en desktop
+  AFRAME.registerComponent('desktop-grab-keys', {
+    schema:{ key:{default:'e'} },
+    init(){
+      this._down = e=>{
+        if ((e.key||'').toLowerCase()!==this.data.key) return;
+        this.el.emit('gripdown');   // événement "bouton" supplémentaire
+      };
+      this._up = e=>{
+        if ((e.key||'').toLowerCase()!==this.data.key) return;
+        this.el.emit('gripup');
+      };
+      window.addEventListener('keydown', this._down);
+      window.addEventListener('keyup',   this._up);
+    },
+    remove(){
+      window.removeEventListener('keydown', this._down);
+      window.removeEventListener('keyup',   this._up);
+    }
+  });
+
+  // Marque un objet comme "tenu" pendant le grab pour l'exclure du raycaster
+  AFRAME.registerComponent('mark-held', {
+    init(){
+      this._onGrabStart = () => {
+        this.el.classList.add('held');
+        console.log('Grab start sur:', this.el.id);
+      };
+      this._onGrabEnd   = () => {
+        this.el.classList.remove('held');
+        console.log('Grab end sur:', this.el.id);
+      };
+      this._onStateRemoved = (e)=>{
+        if (e.detail === 'grabbed') {
+          this.el.classList.remove('held');
+        }
+      };
+      this.el.addEventListener('grab-start', this._onGrabStart);
+      this.el.addEventListener('grab-end',   this._onGrabEnd);
+      this.el.addEventListener('stateremoved', this._onStateRemoved);
+    },
+    remove(){
+      this.el.removeEventListener('grab-start', this._onGrabStart);
+      this.el.removeEventListener('grab-end',   this._onGrabEnd);
+      this.el.removeEventListener('stateremoved', this._onStateRemoved);
+    }
+  });
+
+  // Configuration super-hands simplifiée avec gestion correcte du grab
   AFRAME.registerComponent('grab-handler', {
     init() {
       this.grabbedObject = null;
       this.originalParent = null;
-      this.originalPosition = null;
-      this.originalRotation = null;
+      this.originalBody = null;
       
       // Écouter les événements de bouton
       this.el.addEventListener('gripdown', () => {
+        console.log('Grip down détecté');
         this.tryGrab();
       });
       
       this.el.addEventListener('gripup', () => {
+        console.log('Grip up détecté');
+        this.release();
+      });
+
+      // Écouter les événements super-hands
+      this.el.addEventListener('grab-start', (e) => {
+        console.log('Grab start super-hands');
+        if (e.detail && e.detail.target) {
+          this.grabObject(e.detail.target);
+        }
+      });
+
+      this.el.addEventListener('grab-end', (e) => {
+        console.log('Grab end super-hands');
         this.release();
       });
     },
@@ -365,87 +433,75 @@
     tryGrab() {
       if (this.grabbedObject) return;
       
-      // Trouver l'objet le plus proche
-      const objects = document.querySelectorAll('.grabbable');
-      let closestObject = null;
-      let closestDistance = 0.5; // Distance maximale
-      
-      const handPos = new THREE.Vector3();
-      this.el.object3D.getWorldPosition(handPos);
-      
-      objects.forEach(obj => {
-        const objPos = new THREE.Vector3();
-        obj.object3D.getWorldPosition(objPos);
-        const distance = handPos.distanceTo(objPos);
-        
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestObject = obj;
-        }
-      });
-      
-      if (closestObject) {
-        this.grabObject(closestObject);
-      }
+      // La détection se fait automatiquement par super-hands via sphere-collider
+      console.log('Tentative de grab...');
     },
     
     grabObject(obj) {
+      if (this.grabbedObject) return;
+      
+      console.log('Grab object:', obj.id);
       this.grabbedObject = obj;
       this.originalParent = obj.parentNode;
-      this.originalPosition = obj.getAttribute('position');
-      this.originalRotation = obj.getAttribute('rotation');
       
-      // Sauvegarder la physique
-      this.originalDynamicBody = obj.getAttribute('dynamic-body');
+      // Sauvegarder les propriétés physiques
+      this.originalBody = obj.getAttribute('dynamic-body');
       
       // Désactiver la physique temporairement
       obj.removeAttribute('dynamic-body');
       
-      // Attacher l'objet à la main
-      obj.setAttribute('position', {x: 0, y: 0, z: 0});
+      // Attacher l'objet à la main avec un offset pour qu'il soit visible
+      obj.setAttribute('position', {x: 0, y: 0.1, z: -0.1});
       obj.setAttribute('rotation', {x: 0, y: 0, z: 0});
+      
+      // S'assurer que l'objet reste visible
+      obj.setAttribute('visible', 'true');
+      
       this.el.appendChild(obj);
       
-      console.log('Objet attrapé:', obj.id);
+      console.log('Objet attrapé avec succès:', obj.id);
     },
     
     release() {
-      if (this.grabbedObject) {
-        const obj = this.grabbedObject;
-        
-        // Remettre l'objet dans la scène
-        this.el.removeChild(obj);
-        this.originalParent.appendChild(obj);
-        
-        // Restaurer la position et rotation originales
-        const handWorldPos = new THREE.Vector3();
-        const handWorldRot = new THREE.Quaternion();
-        this.el.object3D.getWorldPosition(handWorldPos);
-        this.el.object3D.getWorldQuaternion(handWorldRot);
-        
-        // Positionner l'objet à la position de la main
-        obj.setAttribute('position', handWorldPos);
-        
-        // Réactiver la physique
-        if (this.originalDynamicBody) {
-          obj.setAttribute('dynamic-body', this.originalDynamicBody);
-        }
-        
-        console.log('Objet relâché:', obj.id);
-        
-        // Réinitialiser les variables
-        this.grabbedObject = null;
-        this.originalParent = null;
-        this.originalPosition = null;
-        this.originalRotation = null;
-        this.originalDynamicBody = null;
+      if (!this.grabbedObject) return;
+      
+      const obj = this.grabbedObject;
+      console.log('Release object:', obj.id);
+      
+      // Remettre l'objet dans la scène
+      this.el.removeChild(obj);
+      this.originalParent.appendChild(obj);
+      
+      // Restaurer la position à la position actuelle de la main
+      const handWorldPos = new THREE.Vector3();
+      this.el.object3D.getWorldPosition(handWorldPos);
+      obj.setAttribute('position', handWorldPos);
+      
+      // Réactiver la physique
+      if (this.originalBody) {
+        obj.setAttribute('dynamic-body', this.originalBody);
       }
+      
+      // S'assurer que l'objet reste visible
+      obj.setAttribute('visible', 'true');
+      
+      console.log('Objet relâché avec succès:', obj.id);
+      
+      // Réinitialiser les variables
+      this.grabbedObject = null;
+      this.originalParent = null;
+      this.originalBody = null;
     }
   });
 
   // Initialisation
   document.querySelector('a-scene').addEventListener('loaded', () => {
+    // Ajouter le grab handler aux mains
+    document.querySelector('#left-hand').setAttribute('grab-handler', '');
+    document.querySelector('#right-hand').setAttribute('grab-handler', '');
+    
     console.log('Scène VR chargée. Utilisez les boutons grip pour attraper les objets.');
+    console.log('En desktop: utilisez la touche E pour grab/relâcher');
   });
 </script>
   </a-scene>

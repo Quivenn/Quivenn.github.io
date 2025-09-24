@@ -428,6 +428,7 @@ AFRAME.registerComponent('gun-shoot', {
     this.el.object3D.getWorldPosition(gunWorldPos);
     this.el.object3D.getWorldDirection(gunWorldDir);
 
+    bullet.classList.add('bullet'); // <== pour les reconnaître dans les collisions
     bullet.setAttribute('radius', 0.05);
     bullet.setAttribute('color', 'yellow');
     bullet.setAttribute('position', {
@@ -441,61 +442,79 @@ AFRAME.registerComponent('gun-shoot', {
     );
     scene.appendChild(bullet);
 
-    // Attendre la création du body et un petit délai avant d'appliquer l'impulsion
+    // Appliquer l'impulsion après initialisation
     bullet.addEventListener('body-loaded', () => {
       setTimeout(() => {
         if (!bullet.body) return;
-        // Recalcule direction monde (au cas où la scène a évolué)
         this.el.object3D.getWorldDirection(gunWorldDir);
 
         const impulse = new CANNON.Vec3(
-          gunWorldDir.x * 2,  // augmente si tu veux plus de vitesse (ex: * 5)
+          gunWorldDir.x * 2,
           gunWorldDir.y * 2,
           gunWorldDir.z * 2
         );
-
         const worldPoint = new CANNON.Vec3(
           bullet.body.position.x,
           bullet.body.position.y,
           bullet.body.position.z
         );
-
         bullet.body.applyImpulse(impulse, worldPoint);
-      }, 0); // délai 0ms => exécution à la frame suivante
+      }, 0);
     });
 
-    // Supprimer après 3s
+    // Supprimer la balle après 3s
     setTimeout(() => {
       if (bullet.parentNode) bullet.parentNode.removeChild(bullet);
     }, 3000);
   }
 });
-
 // Composant pour spawn UNE sphère rouge à une position aléatoire
+// Composant pour les sphères rouges qui deviennent vertes quand elles sont touchées
+AFRAME.registerComponent('red-target', {
+  init: function () {
+    const el = this.el;
+
+    // Ecoute l'événement de collision
+    el.addEventListener('collide', (e) => {
+      const other = e.detail.body.el; // l'élément qui a touché
+      if (other && other.tagName === 'A-SPHERE' && other.classList.contains('bullet')) {
+        // Passe en vert
+        el.setAttribute('color', '#00ff00');
+
+        // Supprime après 200 ms
+        setTimeout(() => {
+          if (el.parentNode) el.parentNode.removeChild(el);
+        }, 200);
+      }
+    });
+  }
+});
+
+// Composant pour spawn sphère rouge sur B/Y
 AFRAME.registerComponent('red-sphere-spawn-on-button', {
   schema: {
-    area:  { type: 'vec3', default: {x: 40, y: 3, z: 40} } // zone de spawn
+    area:  { type: 'vec3', default: {x: 40, y: 3, z: 40} }
   },
   init: function () {
     const scene = this.el.sceneEl;
 
-    // Fonction de création
     const spawnSphere = () => {
       const sphere = document.createElement('a-sphere');
 
       const x = (Math.random() - 0.5) * this.data.area.x;
-      const y = Math.random() * this.data.area.y; 
+      const y = Math.random() * this.data.area.y;
       const z = (Math.random() - 0.5) * this.data.area.z;
 
       sphere.setAttribute('position', { x, y, z });
       sphere.setAttribute('radius', 0.15);
       sphere.setAttribute('color', '#ff0000');
       sphere.setAttribute('material', 'roughness:0.6;metalness:0.2');
+      sphere.setAttribute('static-body', 'shape: sphere;'); // collision statique
+      sphere.setAttribute('red-target', ''); // permet la réaction au tir
 
       scene.appendChild(sphere);
     };
 
-    // Écoute des boutons B et Y
     window.addEventListener('bbuttondown', spawnSphere);
     window.addEventListener('ybuttondown', spawnSphere);
   }

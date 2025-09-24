@@ -226,318 +226,309 @@
     <!-- Scripts de composants personnalisés CORRIGÉS -->
     <script>
       // Variables globales
-      let score = 0;
+  let score = 0;
+  
+  // Composant pour détecter le toucher et changer la couleur
+  AFRAME.registerComponent('touch-highlight', {
+    init: function () {
+      this.originalColor = this.el.getAttribute('material').color;
+      this.isTouched = false;
       
-      // Composant pour détecter le toucher et changer la couleur
-      AFRAME.registerComponent('touch-highlight', {
-        init: function () {
-          this.originalColor = this.el.getAttribute('material').color;
-          this.isTouched = false;
-          
-          this.el.addEventListener('mouseenter', () => {
-            this.highlight();
-          });
-          
-          this.el.addEventListener('mouseleave', () => {
-            this.unhighlight();
-          });
-        },
+      this.el.addEventListener('mouseenter', () => {
+        this.highlight();
+      });
+      
+      this.el.addEventListener('mouseleave', () => {
+        this.unhighlight();
+      });
+    },
+    
+    highlight: function () {
+      if (!this.isTouched) {
+        this.isTouched = true;
+        this.el.setAttribute('material', 'color', '#FFFF00');
+        console.log('Objet touché:', this.el.id);
         
-        highlight: function () {
-          if (!this.isTouched) {
-            this.isTouched = true;
-            this.el.setAttribute('material', 'color', '#FFFF00'); // Jaune quand touché
-            console.log('Objet touché:', this.el.id);
-            
-            // Retour à la couleur originale après 1 seconde
-            setTimeout(() => {
-              this.unhighlight();
-            }, 1000);
+        setTimeout(() => {
+          this.unhighlight();
+        }, 1000);
+      }
+    },
+    
+    unhighlight: function () {
+      this.isTouched = false;
+      this.el.setAttribute('material', 'color', this.originalColor);
+    }
+  });
+
+  // Composant pour détecter la proximité des mains avec les objets
+  AFRAME.registerComponent('hand-touch-detector', {
+    schema: {
+      hand: {type: 'string', default: 'left'},
+      detectionDistance: {type: 'number', default: 0.3}
+    },
+    
+    init: function () {
+      this.handPosition = new THREE.Vector3();
+      this.objPosition = new THREE.Vector3();
+      this.touchedObjects = new Set();
+      
+      console.log('Détecteur de toucher activé pour la main:', this.data.hand);
+    },
+    
+    tick: function () {
+      this.el.object3D.getWorldPosition(this.handPosition);
+      
+      const objects = document.querySelectorAll('.grabbable');
+      
+      objects.forEach(obj => {
+        obj.object3D.getWorldPosition(this.objPosition);
+        const distance = this.handPosition.distanceTo(this.objPosition);
+        
+        if (distance < this.data.detectionDistance) {
+          if (!this.touchedObjects.has(obj)) {
+            this.touchedObjects.add(obj);
+            this.triggerTouch(obj);
           }
-        },
-        
-        unhighlight: function () {
-          this.isTouched = false;
-          this.el.setAttribute('material', 'color', this.originalColor);
+        } else {
+          if (this.touchedObjects.has(obj)) {
+            this.touchedObjects.delete(obj);
+            this.triggerUntouch(obj);
+          }
         }
       });
+    },
+    
+    triggerTouch: function (obj) {
+      obj.emit('mouseenter');
+      console.log(`Main ${this.data.hand} touche l'objet:`, obj.id);
+    },
+    
+    triggerUntouch: function (obj) {
+      obj.emit('mouseleave');
+      console.log(`Main ${this.data.hand} quitte l'objet:`, obj.id);
+    }
+  });
 
-      // Composant pour détecter la proximité des mains avec les objets
-      AFRAME.registerComponent('hand-touch-detector', {
-        schema: {
-          hand: {type: 'string', default: 'left'},
-          detectionDistance: {type: 'number', default: 0.3}
-        },
-        
-        init: function () {
-          this.handPosition = new THREE.Vector3();
-          this.objPosition = new THREE.Vector3();
-          this.touchedObjects = new Set();
-          
-          console.log('Détecteur de toucher activé pour la main:', this.data.hand);
-        },
-        
-        tick: function () {
-          // Obtenir la position mondiale de la main
-          this.el.object3D.getWorldPosition(this.handPosition);
-          
-          // Vérifier la proximité avec tous les objets grabbables
-          const objects = document.querySelectorAll('.grabbable');
-          
-          objects.forEach(obj => {
-            obj.object3D.getWorldPosition(this.objPosition);
-            const distance = this.handPosition.distanceTo(this.objPosition);
-            
-            if (distance < this.data.detectionDistance) {
-              if (!this.touchedObjects.has(obj)) {
-                // Premier contact avec cet objet
-                this.touchedObjects.add(obj);
-                this.triggerTouch(obj);
-              }
-            } else {
-              if (this.touchedObjects.has(obj)) {
-                // Plus de contact avec cet objet
-                this.touchedObjects.delete(obj);
-                this.triggerUntouch(obj);
-              }
-            }
-          });
-        },
-        
-        triggerTouch: function (obj) {
-          // Déclencher l'événement de toucher sur l'objet
-          obj.emit('mouseenter');
-          console.log(`Main ${this.data.hand} touche l'objet:`, obj.id);
-        },
-        
-        triggerUntouch: function (obj) {
-          // Déclencher l'événement de fin de toucher
-          obj.emit('mouseleave');
-          console.log(`Main ${this.data.hand} quitte l'objet:`, obj.id);
-        }
+  // Composant pour le mouvement avec le joystick gauche
+  AFRAME.registerComponent('left-stick-move', {
+    schema: { 
+      speed: {type:'number', default:3}, 
+      deadzone:{type:'number', default:0.05} 
+    },
+    init() {
+      this.axis = {x:0,y:0};
+      this.rig  = document.querySelector('#rig');
+      this.cam  = document.querySelector('#head');
+      this.el.addEventListener('axismove', e => { 
+        this.axis = this.readStickAxes(e.detail.axis); 
       });
+    },
+    readStickAxes(axis){
+      const ax = axis || [];
+      let x = ax[0] ?? 0, y = ax[1] ?? 0;
+      if (Math.abs(x) < 0.001 && Math.abs(y) < 0.001 && ax.length >= 4) {
+        x = ax[2] ?? 0; 
+        y = ax[3] ?? 0;
+      }
+      return {x, y};
+    },
+    tick(t,dt){
+      if(!this.rig || !this.cam) return;
+      const s = this.data.speed * (dt/1000);
+      let {x,y} = this.axis;
+      if (Math.hypot(x,y) < this.data.deadzone) return;
 
-      // Composant pour le mouvement avec le joystick gauche
-      AFRAME.registerComponent('left-stick-move', {
-        schema: { 
-          speed: {type:'number', default:3}, 
-          deadzone:{type:'number', default:0.05} 
-        },
-        init() {
-          this.axis = {x:0,y:0};
-          this.rig  = document.querySelector('#rig');
-          this.cam  = document.querySelector('#head');
-          this.el.addEventListener('axismove', e => { 
-            this.axis = this.readStickAxes(e.detail.axis); 
-          });
-        },
-        readStickAxes(axis){
-          const ax = axis || [];
-          let x = ax[0] ?? 0, y = ax[1] ?? 0;
-          if (Math.abs(x) < 0.001 && Math.abs(y) < 0.001 && ax.length >= 4) {
-            x = ax[2] ?? 0; 
-            y = ax[3] ?? 0;
-          }
-          return {x, y};
-        },
-        tick(t,dt){
-          if(!this.rig || !this.cam) return;
-          const s = this.data.speed * (dt/1000);
-          let {x,y} = this.axis;
-          if (Math.hypot(x,y) < this.data.deadzone) return;
+      const yaw = (this.rig.getAttribute('rotation')?.y || 0) + (this.cam.getAttribute('rotation')?.y || 0);
+      const rad = THREE.MathUtils.degToRad(yaw);
+      const forward = new THREE.Vector3(-Math.sin(rad), 0, -Math.cos(rad));
+      const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).negate();
 
-          const yaw = (this.rig.getAttribute('rotation')?.y || 0) + (this.cam.getAttribute('rotation')?.y || 0);
-          const rad = THREE.MathUtils.degToRad(yaw);
-          const forward = new THREE.Vector3(-Math.sin(rad), 0, -Math.cos(rad));
-          const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).negate();
+      this.rig.object3D.position
+        .addScaledVector(forward, -y*s)
+        .addScaledVector(right, -x*s);
+    }
+  });
 
-          this.rig.object3D.position
-            .addScaledVector(forward, -y*s)
-            .addScaledVector(right, -x*s);
-        }
+  // Composant pour la rotation avec le joystick droit
+  AFRAME.registerComponent('right-stick-turn', {
+    schema:{ 
+      turnSpeed:{type:'number',default:120}, 
+      deadzone:{type:'number',default:0.08},
+      enablePitch: {type: 'boolean', default: false}
+    },
+    init(){
+      this.x=0; this.y=0;
+      this.rig   = document.querySelector('#rig');
+      this.pitch = document.querySelector('#pitch');
+      this.el.addEventListener('axismove', e => {
+        const a = this.readStickAxes(e.detail.axis);
+        this.x = a.x; this.y = a.y;
       });
+      
+      this.isVR = false;
+      this.el.sceneEl.addEventListener('enter-vr', () => { this.isVR = true; });
+      this.el.sceneEl.addEventListener('exit-vr', () => { this.isVR = false; });
+    },
+    readStickAxes(axis){
+      const ax = axis || [];
+      let x = ax[0] ?? 0, y = ax[1] ?? 0;
+      if (Math.abs(x) < 0.001 && Math.abs(y) < 0.001 && ax.length >= 4) {
+        x = ax[2] ?? 0; 
+        y = ax[3] ?? 0;
+      }
+      return {x, y};
+    },
+    tick(t,dt){
+      if(!this.rig || !this.pitch) return;
+      const s = this.data.turnSpeed * (dt/1000);
 
-      // Composant pour la rotation avec le joystick droit
-      AFRAME.registerComponent('right-stick-turn', {
-        schema:{ 
-          turnSpeed:{type:'number',default:120}, 
-          deadzone:{type:'number',default:0.08},
-          enablePitch: {type: 'boolean', default: false}
-        },
-        init(){
-          this.x=0; this.y=0;
-          this.rig   = document.querySelector('#rig');
-          this.pitch = document.querySelector('#pitch');
-          this.el.addEventListener('axismove', e => {
-            const a = this.readStickAxes(e.detail.axis);
-            this.x = a.x; this.y = a.y;
-          });
-          
-          // Détecter si on est en VR
-          this.isVR = false;
-          this.el.sceneEl.addEventListener('enter-vr', () => { this.isVR = true; });
-          this.el.sceneEl.addEventListener('exit-vr', () => { this.isVR = false; });
-        },
-        readStickAxes(axis){
-          const ax = axis || [];
-          let x = ax[0] ?? 0, y = ax[1] ?? 0;
-          if (Math.abs(x) < 0.001 && Math.abs(y) < 0.001 && ax.length >= 4) {
-            x = ax[2] ?? 0; 
-            y = ax[3] ?? 0;
-          }
-          return {x, y};
-        },
-        tick(t,dt){
-          if(!this.rig || !this.pitch) return;
-          const s = this.data.turnSpeed * (dt/1000);
+      if (Math.abs(this.x) >= this.data.deadzone) {
+        const rot = this.rig.getAttribute('rotation') || {x:0,y:0,z:0};
+        rot.y -= this.x * s;
+        this.rig.setAttribute('rotation', rot);
+      }
 
-          // YAW - toujours actif
-          if (Math.abs(this.x) >= this.data.deadzone) {
-            const rot = this.rig.getAttribute('rotation') || {x:0,y:0,z:0};
-            rot.y -= this.x * s;
-            this.rig.setAttribute('rotation', rot);
-          }
+      if (!this.isVR && Math.abs(this.y) >= this.data.deadzone) {
+        const pr = this.pitch.getAttribute('rotation') || {x:0,y:0,z:0};
+        pr.x = this.clamp(pr.x + (-this.y * s), -80, 80);
+        pr.z = 0;
+        this.pitch.setAttribute('rotation', pr);
+      }
+    },
+    clamp(v,a,b){ 
+      return Math.max(a, Math.min(b, v)); 
+    }
+  });
 
-          // PITCH - seulement en mode desktop (pas en VR)
-          if (!this.isVR && Math.abs(this.y) >= this.data.deadzone) {
-            const pr = this.pitch.getAttribute('rotation') || {x:0,y:0,z:0};
-            pr.x = this.clamp(pr.x + (-this.y * s), -80, 80);
-            pr.z = 0;
-            this.pitch.setAttribute('rotation', pr);
-          }
-        },
-        clamp(v,a,b){ 
-          return Math.max(a, Math.min(b, v)); 
-        }
+  // Composant pour le contrôle de l'arme (Exercice 3)
+  AFRAME.registerComponent('gun-controller', {
+    init() {
+      this.gun = document.querySelector('#gun');
+      this.isGrabbing = false;
+      this.triggerPressed = false;
+      
+      // Événements de grab pour super-hands
+      this.el.addEventListener('grab-start', (e) => {
+        this.isGrabbing = true;
+        this.gun.setAttribute('position', '0 0 0');
+        this.el.appendChild(this.gun);
+        console.log('Arme attrapée');
       });
-
-      // Composant pour le contrôle de l'arme (Exercice 3)
-      AFRAME.registerComponent('gun-controller', {
-        init() {
-          this.gun = document.querySelector('#gun');
-          this.isGrabbing = false;
+      
+      this.el.addEventListener('grab-end', (e) => {
+        this.isGrabbing = false;
+        this.gun.setAttribute('position', '0.2 -0.3 -0.5');
+        document.querySelector('#rig').appendChild(this.gun);
+        console.log('Arme relâchée');
+      });
+      
+      // Détection de la gâchette
+      this.el.addEventListener('buttonchanged', (e) => {
+        if (e.detail.id === 0 && e.detail.state.pressed) {
+          this.triggerPressed = true;
+          if (this.isGrabbing) {
+            this.shoot();
+          }
+        } else if (e.detail.id === 0 && !e.detail.state.pressed) {
           this.triggerPressed = false;
+        }
+      });
+    },
+    shoot() {
+      const projectile = document.createElement('a-sphere');
+      projectile.setAttribute('radius', '0.05');
+      projectile.setAttribute('material', 'color: yellow');
+      projectile.setAttribute('dynamic-body', 'mass: 0.1; shape: sphere; linearDamping: 0.3');
+      
+      const gunWorldPos = new THREE.Vector3();
+      this.gun.object3D.getWorldPosition(gunWorldPos);
+      projectile.setAttribute('position', gunWorldPos);
+      
+      const direction = new THREE.Vector3(0, 0, -1);
+      this.gun.object3D.localToWorld(direction);
+      direction.sub(gunWorldPos).normalize().multiplyScalar(30);
+      
+      projectile.setAttribute('velocity', direction);
+      
+      this.el.sceneEl.appendChild(projectile);
+      
+      setTimeout(() => {
+        if (projectile.parentNode) {
+          projectile.parentNode.removeChild(projectile);
+        }
+      }, 3000);
+      
+      projectile.addEventListener('collide', (e) => {
+        if (e.detail.body.el.id && e.detail.body.el.id.includes('target')) {
+          score++;
+          document.getElementById('score').textContent = score;
           
-          // Attacher l'arme à la main droite
-          this.el.addEventListener('grab-start', () => {
-            this.isGrabbing = true;
-            this.gun.setAttribute('position', '0 0 0');
-            this.el.appendChild(this.gun);
-            console.log('Arme attrapée');
-          });
+          e.detail.body.el.setAttribute('material', 'color: #FFFF00');
           
-          this.el.addEventListener('grab-end', () => {
-            this.isGrabbing = false;
-            // Remettre l'arme à sa position initiale
-            this.gun.setAttribute('position', '0.2 -0.3 -0.5');
-            document.querySelector('#rig').appendChild(this.gun);
-            console.log('Arme relâchée');
-          });
-          
-          // Détection de la gâchette
-          this.el.addEventListener('buttonchanged', (e) => {
-            if (e.detail.id === 0 && e.detail.state.pressed) { // Gâchette
-              this.triggerPressed = true;
-              if (this.isGrabbing) {
-                this.shoot();
-              }
-            } else if (e.detail.id === 0 && !e.detail.state.pressed) {
-              this.triggerPressed = false;
-            }
-          });
-        },
-        shoot() {
-          // Créer un projectile
-          const projectile = document.createElement('a-sphere');
-          projectile.setAttribute('radius', '0.05');
-          projectile.setAttribute('material', 'color: yellow');
-          projectile.setAttribute('dynamic-body', 'mass: 0.1; shape: sphere; linearDamping: 0.3');
-          
-          // Positionner le projectile au bout du canon
-          const gunWorldPos = new THREE.Vector3();
-          this.gun.object3D.getWorldPosition(gunWorldPos);
-          projectile.setAttribute('position', gunWorldPos);
-          
-          // Appliquer une force pour simuler le tir
-          const direction = new THREE.Vector3(0, 0, -1);
-          this.gun.object3D.localToWorld(direction);
-          direction.sub(gunWorldPos).normalize().multiplyScalar(30); // Réduit la force
-          
-          projectile.setAttribute('velocity', direction);
-          
-          // Ajouter le projectile à la scène
-          this.el.sceneEl.appendChild(projectile);
-          
-          // Supprimer le projectile après 3 secondes
           setTimeout(() => {
-            if (projectile.parentNode) {
-              projectile.parentNode.removeChild(projectile);
+            if (e.detail.body.el.parentNode) {
+              e.detail.body.el.parentNode.removeChild(e.detail.body.el);
             }
-          }, 3000);
-          
-          // Détection de collision avec les cibles
-          projectile.addEventListener('collide', (e) => {
-            if (e.detail.body.el.id && e.detail.body.el.id.includes('target')) {
-              // Cible touchée
-              score++;
-              document.getElementById('score').textContent = score;
-              
-              // Effet visuel simple pour la cible touchée
-              e.detail.body.el.setAttribute('material', 'color: #FFFF00');
-              
-              // Supprimer la cible après un court délai
-              setTimeout(() => {
-                if (e.detail.body.el.parentNode) {
-                  e.detail.body.el.parentNode.removeChild(e.detail.body.el);
-                }
-              }, 200);
-            }
-          });
+          }, 200);
         }
       });
+    }
+  });
 
-      // Système de génération de cibles (Exercice 4)
-      AFRAME.registerComponent('target-generator', {
-        init() {
-          this.lastTargetTime = 0;
-          this.targetInterval = 2000; // 2 secondes
-        },
-        tick(time) {
-          if (time - this.lastTargetTime > this.targetInterval) {
-            this.createTarget();
-            this.lastTargetTime = time;
-          }
-        },
-        createTarget() {
-          const targetsContainer = document.querySelector('#targets');
-          if (targetsContainer.children.length >= 8) return; // Limite de cibles
-          
-          const target = document.createElement('a-cylinder');
-          const id = 'target-' + Date.now();
-          target.setAttribute('id', id);
-          target.setAttribute('radius', '0.3');
-          target.setAttribute('height', '0.05');
-          target.setAttribute('material', 'color: #FF0000');
-          target.setAttribute('position', {
-            x: (Math.random() * 15) - 7.5,
-            y: 1.5,
-            z: (Math.random() * 15) - 7.5
-          });
-          target.setAttribute('static-body', '');
-          target.setAttribute('shadow', 'cast:true;receive:true');
-          
-          targetsContainer.appendChild(target);
-        }
+  // Système de génération de cibles (Exercice 4)
+  AFRAME.registerComponent('target-generator', {
+    init() {
+      this.lastTargetTime = 0;
+      this.targetInterval = 2000;
+    },
+    tick(time) {
+      if (time - this.lastTargetTime > this.targetInterval) {
+        this.createTarget();
+        this.lastTargetTime = time;
+      }
+    },
+    createTarget() {
+      const targetsContainer = document.querySelector('#targets');
+      if (targetsContainer.children.length >= 8) return;
+      
+      const target = document.createElement('a-cylinder');
+      const id = 'target-' + Date.now();
+      target.setAttribute('id', id);
+      target.setAttribute('radius', '0.3');
+      target.setAttribute('height', '0.05');
+      target.setAttribute('material', 'color: #FF0000');
+      target.setAttribute('position', {
+        x: (Math.random() * 15) - 7.5,
+        y: 1.5,
+        z: (Math.random() * 15) - 7.5
       });
+      target.setAttribute('static-body', 'shape: cylinder; cylinderRadius: 0.3; cylinderHeight: 0.05');
+      target.setAttribute('shadow', 'cast:true;receive:true');
+      
+      targetsContainer.appendChild(target);
+    }
+  });
 
-      // Initialisation après le chargement de la scène
-      document.querySelector('a-scene').addEventListener('loaded', () => {
-        // Ajouter le composant de génération de cibles à la scène
-        document.querySelector('a-scene').setAttribute('target-generator', '');
-        
-        console.log('Scène VR chargée. Les objets sont sur la table devant vous.');
-        console.log('Approchez vos mains des objets pour voir s ils changent de couleur.');
+  // Configuration améliorée pour super-hands
+  document.querySelector('a-scene').addEventListener('loaded', () => {
+    document.querySelector('a-scene').setAttribute('target-generator', '');
+    
+    // Configuration supplémentaire pour super-hands
+    const hands = document.querySelectorAll('[hand-controls]');
+    hands.forEach(hand => {
+      hand.setAttribute('super-hands', {
+        grabStartButtons: ['trigger', 'grip'],
+        grabEndButtons: ['trigger', 'grip'],
+        colliderEvent: 'collidestart',
+        colliderEndEvent: 'collideend',
+        colliderState: true
       });
+    });
+    
+    console.log('Scène VR chargée. Les objets sont sur la table devant vous.');
+    console.log('Approchez vos mains des objets pour voir s ils changent de couleur.');
+  });
     </script>
   </a-scene>
 </body>

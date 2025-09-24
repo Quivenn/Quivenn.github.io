@@ -4,24 +4,36 @@
   <meta charset="utf-8" />
   <title>TP 4 WebVR - Exercices 1 à 4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- A-Frame -->
+  
+  <!-- Bibliothèques A-Frame et extensions -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
-  <!-- aframe-extras (collider) -->
+  
+  <!-- Suppression du conflit de nom "grabbable" -->
+  <script> delete AFRAME.components["grabbable"]; </script>
+  
+  <!-- aframe-extras (sphere-collider) -->
   <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.2/dist/aframe-extras.min.js"></script>
-
-  <!-- Physics system -->
+  
+  <!-- Physics system (CANNON/Ammo support) -->
   <script src="https://cdn.jsdelivr.net/npm/@c-frame/aframe-physics-system@4.1.0/dist/aframe-physics-system.min.js"></script>
-
-  <!-- super-hands -->
+  
+  <!-- super-hands 3.x -->
   <script src="https://unpkg.com/super-hands@3.0.5/dist/super-hands.min.js"></script>
-
+  
   <style>
-    html, body { margin: 0; height: 100%; font-family: system-ui; }
-    a-scene { position: fixed; inset: 0; }
-    .hud, .instructions, .score {
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: system-ui;
+    }
+    a-scene {
       position: fixed;
+      inset: 0;
+    }
+    .hud {
+      position: fixed;
+      left: 12px;
+      top: 12px;
       padding: 8px 12px;
       background: rgba(0, 0, 0, 0.7);
       color: #fff;
@@ -29,9 +41,30 @@
       z-index: 1000;
       pointer-events: none;
     }
-    .hud { left: 12px; top: 12px; }
-    .instructions { left: 12px; bottom: 12px; max-width: 300px; }
-    .score { right: 12px; top: 12px; font-size: 18px; }
+    .instructions {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      border-radius: 8px;
+      z-index: 1000;
+      pointer-events: none;
+      max-width: 300px;
+    }
+    .score {
+      position: fixed;
+      right: 12px;
+      top: 12px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      border-radius: 8px;
+      z-index: 1000;
+      pointer-events: none;
+      font-size: 18px;
+    }
   </style>
 </head>
 <body>
@@ -39,8 +72,9 @@
   <div class="score">Cibles touchées: <span id="score">0</span></div>
   <div class="instructions">
     🎮 Gauche: déplacer — Droite: tourner<br>
-    👊 Main: attraper les objets (gâchette)<br>
-    🔫 Gâchette: tirer avec l'arme<br>
+    👊 Main: attraper les objets sur la table<br>
+    👋 Main: pousser les objets (collision physique)<br>
+    🔫 Gâchette: tirer<br>
     🎯 Touchez les cibles pour marquer des points
   </div>
 
@@ -50,198 +84,155 @@
     shadow="type: pcfsoft"
     background="color: #87CEEB">
 
-    <!-- Sol -->
-    <a-entity id="ground"
+    <!-- Sol avec physique -->
+    <a-entity 
+      id="ground" 
       static-body
       geometry="primitive:plane;width:40;height:40"
-      rotation="-90 0 0"
+      rotation="-90 0 0" 
       material="color:#7da07d;roughness:1;metalness:0"
-      shadow="receive:true"></a-entity>
+      shadow="receive:true">
+    </a-entity>
 
-    <!-- Table -->
+    <!-- Table pour placer les objets à hauteur accessible -->
     <a-entity id="table" position="0 0 -3">
-      <a-box id="table-top"
+      <!-- Plateau de la table -->
+      <a-box 
+        id="table-top"
         static-body
-        position="0 3 0"
+        position="0 3  0"
         width="3" height="0.05" depth="2"
         material="color:#8B4513;roughness:0.8;metalness:0.2"
-        shadow="cast:true;receive:true"></a-box>
-      <!-- Pieds -->
-      <a-box static-body position="-1.2 0.375 -0.8" width="0.1" height="5.10" depth="0.1" material="color:#654321" shadow="cast:true"></a-box>
-      <a-box static-body position="1.2 0.375 -0.8" width="0.1" height="5.10" depth="0.1" material="color:#654321" shadow="cast:true"></a-box>
-      <a-box static-body position="-1.2 0.375 0.8" width="0.1" height="5.10" depth="0.1" material="color:#654321" shadow="cast:true"></a-box>
-      <a-box static-body position="1.2 0.375 0.8" width="0.1" height="5.10" depth="0.1" material="color:#654321" shadow="cast:true"></a-box>
+        shadow="cast:true;receive:true">
+      </a-box>
+      
+      <!-- Pieds de la table -->
+      <a-box 
+        static-body
+        position="-1.2 0.375 -0.8"
+        width="0.1" height="5.10" depth="0.1"
+        material="color:#654321"
+        shadow="cast:true">
+      </a-box>
+      <a-box 
+        static-body
+        position="1.2 0.375 -0.8"
+        width="0.1" height="5.10" depth="0.1"
+        material="color:#654321"
+        shadow="cast:true">
+      </a-box>
+      <a-box 
+        static-body
+        position="-1.2 0.375 0.8"
+        width="0.1" height="5.10" depth="0.1"
+        material="color:#654321"
+        shadow="cast:true">
+      </a-box>
+      <a-box 
+        static-body
+        position="1.2 0.375 0.8"
+        width="0.1" height="5.10" depth="0.1"
+        material="color:#654321"
+        shadow="cast:true">
+      </a-box>
     </a-entity>
 
-    <!-- Objets -->
-    <a-box id="box1" position="-0.5 3.10 -2.5"
+    <!-- Objets sur la table (Exercice 1) -->
+    <a-box 
+      id="box1"
+      position="-0.5 3.10 -2.5" 
       depth="0.3" height="0.3" width="0.3"
       material="color:#c94f4f;roughness:0.8;metalness:0.2"
-      dynamic-body="mass:1"
+      dynamic-body="mass: 1; shape: box; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
       grabbable
-      class="interactable pushable-object"></a-box>
-
-    <a-sphere id="sphere1" position="0.5 3.10 -2.5"
+      class="pushable-object">
+    </a-box>
+    
+    <a-sphere 
+      id="sphere1"
+      position="0.5 3.10 -2.5" 
       radius="0.15"
       material="color:#4f79c9;roughness:0.6;metalness:0.2"
-      dynamic-body="mass:1"
+      dynamic-body="mass: 1; shape: sphere; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
       grabbable
-      class="interactable pushable-object"></a-sphere>
-
-    <a-cylinder id="cylinder1" position="0 3.10 -3"
+      class="pushable-object">
+    </a-sphere>
+    
+    <a-cylinder 
+      id="cylinder1"
+      position="0 3.10 -3" 
       radius="0.15" height="0.3"
       material="color:#4fc94f;roughness:0.7;metalness:0.2"
-      dynamic-body="mass:1"
+      dynamic-body="mass: 1; shape: cylinder; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
       grabbable
-      class="interactable pushable-object"></a-cylinder>
+      class="pushable-object">
+    </a-cylinder>
 
-    <!-- Cibles -->
+    <!-- Cibles (Exercice 4) -->
     <a-entity id="targets"></a-entity>
 
-    <!-- Arme -->
-    <a-entity id="gun" position="0.2 -0.3 -0.5" scale="0.5 0.5 0.5">
-      <a-box position="0 0 0" width="0.1" height="0.1" depth="0.3" material="color:#333"></a-box>
-      <a-box position="0 0.05 0.15" width="0.1" height="0.2" depth="0.1" material="color:#555"></a-box>
+    <!-- Arme (Exercice 3) -->
+    <a-entity id="gun" position="0.2 -0.3 -0.5" rotation="0 0 0" scale="0.5 0.5 0.5">
+      <a-box position="0 0 0" width="0.1" height="0.1" depth="0.3" material="color: #333"></a-box>
+      <a-box position="0 0.05 0.15" width="0.1" height="0.2" depth="0.1" material="color: #555"></a-box>
     </a-entity>
 
-    <!-- Lumières -->
+    <!-- Lumières (Exercice 1) -->
     <a-entity light="type:ambient;intensity:0.35;color:#fff"></a-entity>
-    <a-entity id="sun" light="type:directional;intensity:1;castShadow:true;shadowBias:-0.0003"
-      position="5 8 3" rotation="-45 30 0"></a-entity>
+    <a-entity 
+      id="sun"
+      light="type:directional;intensity:1;castShadow:true;shadowBias:-0.0003"
+      position="5 8 3" 
+      rotation="-45 30 0">
+    </a-entity>
 
+    <!-- Ciel -->
     <a-sky color="#87CEEB"></a-sky>
 
-    <!-- Rig + cam + mains -->
-    <a-entity id="rig" position="0 1.6 0">
-      <a-entity id="pitch">
+    <!-- Rig + caméra + contrôleurs -->
+    <a-entity id="rig" position="0 1.6 0" rotation="0 0 0">
+      <a-entity id="pitch" rotation="0 0 0">
         <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
-
-        <!-- Main gauche -->
-        <a-entity id="left-hand"
-          hand-controls="hand: left; handModelStyle: lowPoly"
+        
+        <!-- Contrôleurs VR avec collision - CORRIGÉ -->
+        <a-entity 
+          id="left-hand" 
+          hand-controls="hand: left" 
           super-hands="grabStartButtons: trigger; grabEndButtons: trigger"
-          sphere-collider="objects: .interactable; radius:0.06"
-          left-stick-move>
+          sphere-collider="objects: .pushable-object"
+          left-stick-move="speed:3"
+          hand-pusher="pushForce: 2">
         </a-entity>
-
-
-        <!-- Main droite -->
-        <a-entity id="right-hand"
-          hand-controls="hand: right; handModelStyle: lowPoly"
+        
+        <a-entity 
+          id="right-hand" 
+          hand-controls="hand: right" 
           super-hands="grabStartButtons: trigger; grabEndButtons: trigger"
-          sphere-collider="objects: .interactable; radius:0.06"
-          right-stick-turn
-          gun-controller>
-        </a-entity>
+          sphere-collider="objects: .pushable-object"
+          right-stick-turn="turnSpeed:120; deadzone:0.08"
+          gun-controller
+          hand-pusher="pushForce: 2">
+        </a-entity> 
       </a-entity>
     </a-entity>
 
+    <!-- WebXR -->
     <a-entity webxr="optionalFeatures: local-floor, bounded-floor"></a-entity>
 
-    <!-- Scripts personnalisés -->
+    <!-- Scripts de composants personnalisés CORRIGÉS -->
     <script>
+      // Variables globales
       let score = 0;
-
-      // Rotation avec stick droit
-      AFRAME.registerComponent('right-stick-turn', {
-        schema:{ turnSpeed:{type:'number',default:120}, deadzone:{type:'number',default:0.08} },
-        init(){
-          this.x=0;
-          this.rig = document.querySelector('#rig');
-          this.el.addEventListener('axismove', e => {
-            this.x = e.detail.axis[0] || 0;
-          });
-        },
-        tick(t,dt){
-          if(!this.rig) return;
-          if (Math.abs(this.x) >= this.data.deadzone) {
-            const rot = this.rig.getAttribute('rotation') || {y:0};
-            rot.y -= this.x * this.data.turnSpeed * (dt/1000);
-            this.rig.setAttribute('rotation', rot);
-          }
-        }
-      });
-
-      // Contrôle arme
-      AFRAME.registerComponent('gun-controller', {
-        init() {
-          this.gun = document.querySelector('#gun');
-          this.isGrabbing = false;
-          this.el.addEventListener('grab-start', () => {
-            this.isGrabbing = true;
-            this.gun.setAttribute('position','0 0 0');
-            this.el.appendChild(this.gun);
-          });
-          this.el.addEventListener('grab-end', () => {
-            this.isGrabbing = false;
-            this.gun.setAttribute('position','0.2 -0.3 -0.5');
-            document.querySelector('#rig').appendChild(this.gun);
-          });
-          this.el.addEventListener('buttonchanged', (e) => {
-            if (e.detail.id===0 && e.detail.state.pressed && this.isGrabbing) this.shoot();
-          });
-        },
-        shoot() {
-          const projectile = document.createElement('a-sphere');
-          projectile.setAttribute('radius','0.05');
-          projectile.setAttribute('material','color:yellow');
-          projectile.setAttribute('dynamic-body','mass:0.1; shape:sphere; linearDamping:0.3');
-          const gunPos = new THREE.Vector3();
-          this.gun.object3D.getWorldPosition(gunPos);
-          projectile.setAttribute('position', gunPos);
-          const dir = new THREE.Vector3(0,0,-1);
-          this.gun.object3D.localToWorld(dir);
-          dir.sub(gunPos).normalize().multiplyScalar(30);
-          projectile.setAttribute('velocity', dir);
-          this.el.sceneEl.appendChild(projectile);
-          setTimeout(()=>projectile.remove(),3000);
-          projectile.addEventListener('collide', e=>{
-            if (e.detail.body.el.id.includes('target')){
-              score++;
-              document.getElementById('score').textContent = score;
-              e.detail.body.el.setAttribute('material','color:yellow');
-              setTimeout(()=>e.detail.body.el.remove(),200);
-            }
-          });
-        }
-      });
-
-      // Générateur de cibles
-      AFRAME.registerComponent('target-generator', {
-        init(){ this.lastTarget=0; this.interval=2000; },
-        tick(t){
-          if (t-this.lastTarget>this.interval) {
-            this.spawn(); this.lastTarget=t;
-          }
-        },
-        spawn(){
-          const cont=document.querySelector('#targets');
-          if (cont.children.length>=8) return;
-          const target=document.createElement('a-cylinder');
-          target.setAttribute('id','target-'+Date.now());
-          target.setAttribute('radius','0.3');
-          target.setAttribute('height','0.05');
-          target.setAttribute('material','color:red');
-          target.setAttribute('position',{
-            x:(Math.random()*15)-7.5,
-            y:1.5,
-            z:(Math.random()*15)-7.5
-          });
-          target.setAttribute('static-body','');
-          cont.appendChild(target);
-        }
-      });
-
-      document.querySelector('a-scene').addEventListener('loaded', ()=>{
-        document.querySelector('a-scene').setAttribute('target-generator','');
-      });
-
-            // Déplacement avec stick gauche
+      
+      // Composant pour le mouvement avec le joystick gauche
       AFRAME.registerComponent('left-stick-move', {
-        schema: { speed: {type:'number', default:3}, deadzone:{type:'number', default:0.05} },
+        schema: { 
+          speed: {type:'number', default:3}, 
+          deadzone:{type:'number', default:0.05} 
+        },
         init() {
           this.axis = {x:0,y:0};
           this.rig  = document.querySelector('#rig');
@@ -276,6 +267,241 @@
         }
       });
 
+      // Composant pour la rotation avec le joystick droit
+      AFRAME.registerComponent('right-stick-turn', {
+        schema:{ 
+          turnSpeed:{type:'number',default:120}, 
+          deadzone:{type:'number',default:0.08},
+          enablePitch: {type: 'boolean', default: false}
+        },
+        init(){
+          this.x=0; this.y=0;
+          this.rig   = document.querySelector('#rig');
+          this.pitch = document.querySelector('#pitch');
+          this.el.addEventListener('axismove', e => {
+            const a = this.readStickAxes(e.detail.axis);
+            this.x = a.x; this.y = a.y;
+          });
+          
+          // Détecter si on est en VR
+          this.isVR = false;
+          this.el.sceneEl.addEventListener('enter-vr', () => { this.isVR = true; });
+          this.el.sceneEl.addEventListener('exit-vr', () => { this.isVR = false; });
+        },
+        readStickAxes(axis){
+          const ax = axis || [];
+          let x = ax[0] ?? 0, y = ax[1] ?? 0;
+          if (Math.abs(x) < 0.001 && Math.abs(y) < 0.001 && ax.length >= 4) {
+            x = ax[2] ?? 0; 
+            y = ax[3] ?? 0;
+          }
+          return {x, y};
+        },
+        tick(t,dt){
+          if(!this.rig || !this.pitch) return;
+          const s = this.data.turnSpeed * (dt/1000);
+
+          // YAW - toujours actif
+          if (Math.abs(this.x) >= this.data.deadzone) {
+            const rot = this.rig.getAttribute('rotation') || {x:0,y:0,z:0};
+            rot.y -= this.x * s;
+            this.rig.setAttribute('rotation', rot);
+          }
+
+          // PITCH - seulement en mode desktop (pas en VR)
+          if (!this.isVR && Math.abs(this.y) >= this.data.deadzone) {
+            const pr = this.pitch.getAttribute('rotation') || {x:0,y:0,z:0};
+            pr.x = this.clamp(pr.x + (-this.y * s), -80, 80);
+            pr.z = 0;
+            this.pitch.setAttribute('rotation', pr);
+          }
+        },
+        clamp(v,a,b){ 
+          return Math.max(a, Math.min(b, v)); 
+        }
+      });
+
+      // Composant pour le contrôle de l'arme (Exercice 3)
+      AFRAME.registerComponent('gun-controller', {
+        init() {
+          this.gun = document.querySelector('#gun');
+          this.isGrabbing = false;
+          this.triggerPressed = false;
+          
+          // Attacher l'arme à la main droite
+          this.el.addEventListener('grab-start', () => {
+            this.isGrabbing = true;
+            this.gun.setAttribute('position', '0 0 0');
+            this.el.appendChild(this.gun);
+          });
+          
+          this.el.addEventListener('grab-end', () => {
+            this.isGrabbing = false;
+            // Remettre l'arme à sa position initiale
+            this.gun.setAttribute('position', '0.2 -0.3 -0.5');
+            document.querySelector('#rig').appendChild(this.gun);
+          });
+          
+          // Détection de la gâchette
+          this.el.addEventListener('buttonchanged', (e) => {
+            if (e.detail.id === 0 && e.detail.state.pressed) { // Gâchette
+              this.triggerPressed = true;
+              if (this.isGrabbing) {
+                this.shoot();
+              }
+            } else if (e.detail.id === 0 && !e.detail.state.pressed) {
+              this.triggerPressed = false;
+            }
+          });
+        },
+        shoot() {
+          // Créer un projectile
+          const projectile = document.createElement('a-sphere');
+          projectile.setAttribute('radius', '0.05');
+          projectile.setAttribute('material', 'color: yellow');
+          projectile.setAttribute('dynamic-body', 'mass: 0.1; shape: sphere; linearDamping: 0.3');
+          
+          // Positionner le projectile au bout du canon
+          const gunWorldPos = new THREE.Vector3();
+          this.gun.object3D.getWorldPosition(gunWorldPos);
+          projectile.setAttribute('position', gunWorldPos);
+          
+          // Appliquer une force pour simuler le tir
+          const direction = new THREE.Vector3(0, 0, -1);
+          this.gun.object3D.localToWorld(direction);
+          direction.sub(gunWorldPos).normalize().multiplyScalar(30); // Réduit la force
+          
+          projectile.setAttribute('velocity', direction);
+          
+          // Ajouter le projectile à la scène
+          this.el.sceneEl.appendChild(projectile);
+          
+          // Supprimer le projectile après 3 secondes
+          setTimeout(() => {
+            if (projectile.parentNode) {
+              projectile.parentNode.removeChild(projectile);
+            }
+          }, 3000);
+          
+          // Détection de collision avec les cibles
+          projectile.addEventListener('collide', (e) => {
+            if (e.detail.body.el.id && e.detail.body.el.id.includes('target')) {
+              // Cible touchée
+              score++;
+              document.getElementById('score').textContent = score;
+              
+              // Effet visuel simple pour la cible touchée
+              e.detail.body.el.setAttribute('material', 'color: #FFFF00');
+              
+              // Supprimer la cible après un court délai
+              setTimeout(() => {
+                if (e.detail.body.el.parentNode) {
+                  e.detail.body.el.parentNode.removeChild(e.detail.body.el);
+                }
+              }, 200);
+            }
+          });
+        }
+      });
+
+      // Composant CORRIGÉ pour pousser les objets avec les mains
+      AFRAME.registerComponent('hand-pusher', {
+        schema: {
+          pushForce: {type: 'number', default: 2} // Force réduite
+        },
+        
+        init() {
+          this.collidingObjects = new Set();
+          this.lastPushTime = 0;
+          this.pushInterval = 100; // ms entre les poussées
+          
+          this.el.addEventListener('hit', (e) => {
+            const targetEl = e.detail.el;
+            if (targetEl && targetEl.classList.contains('pushable-object')) {
+              this.collidingObjects.add(targetEl);
+            }
+          });
+          
+          this.el.addEventListener('hitend', (e) => {
+            const targetEl = e.detail.el;
+            if (targetEl) {
+              this.collidingObjects.delete(targetEl);
+            }
+          });
+        },
+        
+        tick(time) {
+          if (this.collidingObjects.size === 0 || time - this.lastPushTime < this.pushInterval) return;
+          
+          this.lastPushTime = time;
+          
+          const handWorldPos = new THREE.Vector3();
+          this.el.object3D.getWorldPosition(handWorldPos);
+          
+          this.collidingObjects.forEach(obj => {
+            if (!obj.body) return;
+            
+            const objWorldPos = new THREE.Vector3();
+            obj.object3D.getWorldPosition(objWorldPos);
+            
+            // Calculer la direction de la force (de la main vers l'objet)
+            const forceDirection = new THREE.Vector3();
+            forceDirection.subVectors(objWorldPos, handWorldPos).normalize();
+            
+            // Appliquer une force beaucoup plus douce
+            const force = new CANNON.Vec3(
+              forceDirection.x * this.data.pushForce,
+              forceDirection.y * this.data.pushForce + 0.5, // Légère poussée vers le haut
+              forceDirection.z * this.data.pushForce
+            );
+            
+            obj.body.applyForce(force, obj.body.position);
+          });
+        }
+      });
+
+      // Système de génération de cibles (Exercice 4)
+      AFRAME.registerComponent('target-generator', {
+        init() {
+          this.lastTargetTime = 0;
+          this.targetInterval = 2000; // 2 secondes
+        },
+        tick(time) {
+          if (time - this.lastTargetTime > this.targetInterval) {
+            this.createTarget();
+            this.lastTargetTime = time;
+          }
+        },
+        createTarget() {
+          const targetsContainer = document.querySelector('#targets');
+          if (targetsContainer.children.length >= 8) return; // Limite de cibles
+          
+          const target = document.createElement('a-cylinder');
+          const id = 'target-' + Date.now();
+          target.setAttribute('id', id);
+          target.setAttribute('radius', '0.3');
+          target.setAttribute('height', '0.05');
+          target.setAttribute('material', 'color: #FF0000');
+          target.setAttribute('position', {
+            x: (Math.random() * 15) - 7.5,
+            y: 1.5,
+            z: (Math.random() * 15) - 7.5
+          });
+          target.setAttribute('static-body', '');
+          target.setAttribute('shadow', 'cast:true;receive:true');
+          
+          targetsContainer.appendChild(target);
+        }
+      });
+
+      // Initialisation après le chargement de la scène
+      document.querySelector('a-scene').addEventListener('loaded', () => {
+        // Ajouter le composant de génération de cibles à la scène
+        document.querySelector('a-scene').setAttribute('target-generator', '');
+        
+        console.log('Scène VR chargée. Les objets sont sur la table devant vous.');
+        console.log('Vous pouvez maintenant attraper et pousser les objets avec vos mains!');
+      });
     </script>
   </a-scene>
 </body>

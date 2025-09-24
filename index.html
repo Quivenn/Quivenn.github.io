@@ -160,7 +160,7 @@
     </a-cylinder>
 
     <!-- Gun  -->
-<a-entity 
+<a-box 
   id="gun"
   gltf-model="/heavy_plasma_gun_kurtz_x1.glb" 
   scale="0.3 0.3 0.3"       
@@ -171,7 +171,10 @@
   class="grabbable"
   grabbable
   gun-shoot>
-</a-entity>
+
+  <!-- Poignée pour la main -->
+  <a-entity id="grip-point" position="0 -0.05 0.2" rotation="0 0 0"></a-entity>
+</a-box>
 
 <a-assets>
   <audio id="hit-sound" src="PistolShot01.mp3"></audio>
@@ -412,9 +415,30 @@ AFRAME.registerComponent('grab-handler', {
   grabObject(obj) {
     this.grabbedObject = obj;
     obj.removeAttribute('dynamic-body');
-    this.el.object3D.attach(obj.object3D);
+
+    // Vérifier si l’objet a un grip-point
+    const grip = obj.querySelector('#grip-point');
+    if (grip) {
+      // Récupérer la transformation monde du grip
+      const gripWorldPos = new THREE.Vector3();
+      const gripWorldQuat = new THREE.Quaternion();
+      grip.object3D.getWorldPosition(gripWorldPos);
+      grip.object3D.getWorldQuaternion(gripWorldQuat);
+
+      // Placer l’arme dans la main
+      this.el.object3D.attach(obj.object3D);
+
+      // Aligner l’arme selon le grip
+      obj.object3D.position.set(0, 0, 0);
+      obj.object3D.quaternion.copy(gripWorldQuat);
+    } else {
+      // Si pas de grip, comportement normal
+      this.el.object3D.attach(obj.object3D);
+    }
+
     console.log('Objet attrapé:', obj.id);
   },
+
 
   release() {
     if (!this.grabbedObject) return;

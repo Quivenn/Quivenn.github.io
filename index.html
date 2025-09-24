@@ -431,20 +431,22 @@ AFRAME.registerComponent('gun-shoot', {
     const scene = this.el.sceneEl;
     const bullet = document.createElement('a-sphere');
 
-    // Position + direction du canon
+    // Récupère position et direction
     const gunWorldPos = new THREE.Vector3();
     const gunWorldDir = new THREE.Vector3();
     this.el.object3D.getWorldPosition(gunWorldPos);
     this.el.object3D.getWorldDirection(gunWorldDir);
 
-    bullet.classList.add('bullet'); // <== pour les reconnaître dans les collisions
+    // 🔄 Inverser la direction (Z -> -Z)
+    gunWorldDir.negate();
+
+    // Déplace légèrement le point de spawn vers l'avant
+    const spawnPos = gunWorldPos.clone().add(gunWorldDir.clone().multiplyScalar(0.5));
+
+    bullet.classList.add('bullet');
     bullet.setAttribute('radius', 0.05);
     bullet.setAttribute('color', 'yellow');
-    bullet.setAttribute('position', {
-      x: gunWorldPos.x + gunWorldDir.x * 0.5,
-      y: gunWorldPos.y + gunWorldDir.y * 0.5,
-      z: gunWorldPos.z + gunWorldDir.z * 0.5
-    });
+    bullet.setAttribute('position', spawnPos);
     bullet.setAttribute(
       'dynamic-body',
       'mass:0.1; shape:sphere; linearDamping:0; angularDamping:0;'
@@ -455,7 +457,10 @@ AFRAME.registerComponent('gun-shoot', {
     bullet.addEventListener('body-loaded', () => {
       setTimeout(() => {
         if (!bullet.body) return;
+
+        // ⚠️ recalcul de la direction et inversion pour cohérence
         this.el.object3D.getWorldDirection(gunWorldDir);
+        gunWorldDir.negate();
 
         const impulse = new CANNON.Vec3(
           gunWorldDir.x * 2,
@@ -477,6 +482,7 @@ AFRAME.registerComponent('gun-shoot', {
     }, 3000);
   }
 });
+
 // Composant pour spawn UNE sphère rouge à une position aléatoire
 // Composant pour les sphères rouges qui deviennent vertes quand elles sont touchées
 AFRAME.registerComponent('red-target', {

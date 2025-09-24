@@ -430,6 +430,7 @@ AFRAME.registerComponent('grab-handler', {
 
       // Aligner l’arme selon le grip
       obj.object3D.position.set(0, 0, 0);
+      obj.object3D.rotation.set(0, 90, 0);
       obj.object3D.quaternion.copy(gripWorldQuat);
     } else {
       // Si pas de grip, comportement normal

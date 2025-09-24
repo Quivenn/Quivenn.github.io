@@ -436,21 +436,27 @@ AFRAME.registerComponent('gun-shoot', {
     );
     scene.appendChild(bullet);
 
-    // Appliquer une impulsion quand le body est prêt
+    // Attendre la création du body et un petit délai avant d'appliquer l'impulsion
     bullet.addEventListener('body-loaded', () => {
-      const force = new CANNON.Vec3(
-        gunWorldDir.x * 2, // Ajuste la puissance ici
-        gunWorldDir.y * 2,
-        gunWorldDir.z * 2
-      );
+      setTimeout(() => {
+        if (!bullet.body) return;
+        // Recalcule direction monde (au cas où la scène a évolué)
+        this.el.object3D.getWorldDirection(gunWorldDir);
 
-      const worldPoint = new CANNON.Vec3(
-        bullet.body.position.x,
-        bullet.body.position.y,
-        bullet.body.position.z
-      );
+        const impulse = new CANNON.Vec3(
+          gunWorldDir.x * 2,  // augmente si tu veux plus de vitesse (ex: * 5)
+          gunWorldDir.y * 2,
+          gunWorldDir.z * 2
+        );
 
-      bullet.body.applyImpulse(force, worldPoint);
+        const worldPoint = new CANNON.Vec3(
+          bullet.body.position.x,
+          bullet.body.position.y,
+          bullet.body.position.z
+        );
+
+        bullet.body.applyImpulse(impulse, worldPoint);
+      }, 0); // délai 0ms => exécution à la frame suivante
     });
 
     // Supprimer après 3s

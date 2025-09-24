@@ -145,9 +145,8 @@
       material="color:#c94f4f;roughness:0.8;metalness:0.2"
       dynamic-body="mass: 1; shape: box; linearDamping: 0.5; angularDamping: 0.5"
       shadow="cast:true;receive:true"
-      class="pushable-object grabbable"
       grabbable
-      super-hands-grabbable>
+      class="pushable-object">
     </a-box>
     
     <a-sphere 
@@ -198,7 +197,8 @@
       <a-entity id="pitch" rotation="0 0 0">
         <a-entity id="head" camera look-controls="pointerLockEnabled: true"></a-entity>
         
-                <!-- Contrôleurs VR avec collision -->
+        <!-- Contrôleurs VR avec collision - CORRIGÉ -->
+        <!-- Contrôleurs VR avec configuration corrigée -->
         <a-entity 
           id="left-hand" 
           hand-controls="hand: left; handModelStyle: lowPoly; color: #ff0000"
@@ -235,20 +235,6 @@
       let score = 0;
       
       // Composant pour le mouvement avec le joystick gauche
-
-      // Composant collision-filter nécessaire pour super-hands
-      AFRAME.registerComponent('collision-filter', {
-        dependencies: ['super-hands'],
-        init: function () {
-          this.el.addEventListener('grab-start', (e) => {
-            console.log('Grab start:', e.detail);
-          });
-          this.el.addEventListener('grab-end', (e) => {
-            console.log('Grab end:', e.detail);
-          });
-        }
-      });
-
       AFRAME.registerComponent('left-stick-move', {
         schema: { 
           speed: {type:'number', default:3}, 
@@ -522,6 +508,41 @@
         
         console.log('Scène VR chargée. Les objets sont sur la table devant vous.');
         console.log('Vous pouvez maintenant attraper et pousser les objets avec vos mains!');
+      });
+
+
+            // Script de débogage pour le grab
+      AFRAME.registerComponent('grab-debug', {
+        init: function () {
+          const hand = this.el;
+          
+          // Écouter les événements de collision
+          hand.addEventListener('collision', (e) => {
+            console.log('Collision avec:', e.detail.body.el);
+          });
+          
+          // Écouter les événements de bouton
+          hand.addEventListener('buttonchanged', (e) => {
+            console.log('Bouton:', e.detail.id, 'Pressé:', e.detail.state.pressed);
+          });
+          
+          // Écouter les événements super-hands
+          hand.addEventListener('grab-start', (e) => {
+            console.log('GRAB STARTED:', e.detail);
+          });
+          
+          hand.addEventListener('grab-end', (e) => {
+            console.log('GRAB ENDED:', e.detail);
+          });
+          
+          console.log('Debug grab activé pour', hand.id);
+        }
+      });
+
+      // Appliquer le debug aux mains
+      document.querySelector('a-scene').addEventListener('loaded', () => {
+        document.querySelector('#left-hand').setAttribute('grab-debug', '');
+        document.querySelector('#right-hand').setAttribute('grab-debug', '');
       });
     </script>
   </a-scene>

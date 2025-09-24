@@ -232,7 +232,9 @@
       AFRAME.registerComponent('touch-highlight', {
         init: function () {
           this.originalColor = this.el.getAttribute('material').color;
+          this.originalScale = this.el.getAttribute('scale') || {x: 1, y: 1, z: 1};
           this.isTouched = false;
+          this.scaleAnimation = null;
           
           this.el.addEventListener('mouseenter', () => {
             this.highlight();
@@ -249,6 +251,21 @@
             this.el.setAttribute('material', 'color', '#FFFF00'); // Jaune quand touché
             console.log('Objet touché:', this.el.id);
             
+            // Arrêter toute animation précédente
+            if (this.scaleAnimation) {
+              this.el.removeAttribute('animation');
+            }
+            
+            // Animation de scale temporaire
+            this.el.setAttribute('animation', {
+              property: 'scale',
+              from: `${this.originalScale.x} ${this.originalScale.y} ${this.originalScale.z}`,
+              to: `${this.originalScale.x * 1.2} ${this.originalScale.y * 1.2} ${this.originalScale.z * 1.2}`,
+              dur: 200,
+              easing: 'easeOutElastic',
+              autoplay: true
+            });
+            
             // Retour à la couleur originale après 1 seconde
             setTimeout(() => {
               this.unhighlight();
@@ -257,12 +274,24 @@
         },
         
         unhighlight: function () {
-          this.isTouched = false;
-          this.el.setAttribute('material', 'color', this.originalColor);
+          if (this.isTouched) {
+            this.isTouched = false;
+            this.el.setAttribute('material', 'color', this.originalColor);
+            
+            // Animation de retour à la taille normale
+            this.el.setAttribute('animation', {
+              property: 'scale',
+              from: this.el.getAttribute('scale'),
+              to: `${this.originalScale.x} ${this.originalScale.y} ${this.originalScale.z}`,
+              dur: 200,
+              easing: 'easeOutElastic',
+              autoplay: true
+            });
+          }
         }
       });
-      
-      // Composant pour détecter la proximité des mains avec les objets
+
+      // Composant pour détecter la proximité des mains avec les objets - CORRIGÉ
       AFRAME.registerComponent('hand-touch-detector', {
         schema: {
           hand: {type: 'string', default: 'left'},
@@ -298,6 +327,7 @@
               if (this.touchedObjects.has(obj)) {
                 // Plus de contact avec cet objet
                 this.touchedObjects.delete(obj);
+                this.triggerUntouch(obj);
               }
             }
           });
@@ -307,25 +337,12 @@
           // Déclencher l'événement de toucher sur l'objet
           obj.emit('mouseenter');
           console.log(`Main ${this.data.hand} touche l'objet:`, obj.id);
-          
-          // Ajouter un effet visuel temporaire
-          const originalScale = obj.getAttribute('scale') || {x: 1, y: 1, z: 1};
-          obj.setAttribute('animation', {
-            property: 'scale',
-            to: `${originalScale.x * 1.2} ${originalScale.y * 1.2} ${originalScale.z * 1.2}`,
-            dur: 200,
-            easing: 'easeOutElastic'
-          });
-          
-          // Restaurer après un moment
-          setTimeout(() => {
-            obj.setAttribute('animation', {
-              property: 'scale',
-              to: `${originalScale.x} ${originalScale.y} ${originalScale.z}`,
-              dur: 200,
-              easing: 'easeOutElastic'
-            });
-          }, 500);
+        },
+        
+        triggerUntouch: function (obj) {
+          // Déclencher l'événement de fin de toucher
+          obj.emit('mouseleave');
+          console.log(`Main ${this.data.hand} quitte l'objet:`, obj.id);
         }
       });
 
